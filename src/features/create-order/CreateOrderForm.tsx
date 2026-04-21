@@ -93,7 +93,6 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState<OrderAddress>({ city: '', street: '', building: '', apartment: '', comment: '' });
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [note, setNote] = useState('');
 
   const createOrder = useOrdersStore((state) => state.createOrder);
   const loading = useOrdersStore((state) => state.loading);

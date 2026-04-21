@@ -6,7 +6,7 @@ const StyledButton = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost'
   min-height: 44px;
   padding: 0 18px;
   color: ${({ variant, theme }) => (variant === 'secondary' ? theme.colors.text : '#fff')};
-  background: ${({ variant, theme }) =>
+  background: ${({ variant }) =>
     variant === 'secondary' ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #5d7bff, #34d399)'};
   font-weight: 700;
   transition: transform 120ms ease, opacity 120ms ease;
