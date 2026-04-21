@@ -6,7 +6,19 @@ deployment:
     - npm run build
     - /bin/cp -R dist/* /home/numjczhc/public_html/
 
+    # .htaccess для SPA + HTTPS
+    - |
+      echo '<IfModule mod_rewrite.c>
+      RewriteEngine On
+      RewriteCond %{HTTPS} off
+      RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+      RewriteCond %{REQUEST_FILENAME} !-f
+      RewriteCond %{REQUEST_FILENAME} !-d
+      RewriteRule ^ index.html [L]
+      </IfModule>' > /home/numjczhc/public_html/.htaccess
+
     # Бэкенд
     - cd /home/numjczhc/repositories/ordercenter/server
     - npm install
     - npm run migrate
+    - touch /home/numjczhc/repositories/ordercenter/server/bin/www.js
