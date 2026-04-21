@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import {forwardRef} from "react";
 
 const StyledButton = styled.button<{ variant?: 'primary' | 'secondary' | 'ghost' }>`
   border: none;
@@ -26,8 +27,12 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost';
 };
 
-export const Button: React.FC<ButtonProps> = ({ variant = 'primary', children, ...props }) => (
-  <StyledButton variant={variant} {...props}>
-    {children}
-  </StyledButton>
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, ...props }, ref) => {
+    return (
+      <button ref={ref} {...props}>
+        {children}
+      </button>
+    );
+  }
 );
