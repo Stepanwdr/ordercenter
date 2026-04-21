@@ -30,9 +30,9 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ children, ...props }, ref) => {
     return (
-      <button ref={ref} {...props}>
+      <StyledButton ref={ref} {...props}>
         {children}
-      </button>
+      </StyledButton>
     );
   }
 );
