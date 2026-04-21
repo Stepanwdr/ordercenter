@@ -6,7 +6,7 @@ import { Dropdown } from '@shared/ui/Dropdown';
 import { CreateOrderForm } from '@features/create-order/CreateOrderForm';
 import { Table } from '@shared/ux/Table';
 import type { Column } from 'react-data-grid';
-import type { Order, OrderCourierStatus } from '@shared/types';
+import type {Order, OrderCourierStatus, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
 
@@ -70,27 +70,49 @@ const TableSection = styled.section`
   padding-bottom: 8px;
 `;
 
+const ItemChips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+`;
+
+const ItemChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(79, 143, 255, 0.12);
+  border: 1px solid rgba(79, 143, 255, 0.24);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.85rem;
+  line-height: 1.2;
+  white-space: nowrap;
+`;
+
 const mockOrders: Order[] = [
   {
     id: 'o1',
     orderCode: 'ORD-1001',
-    customerName: 'Alice Bennett',
+    customerName: 'Արմինե Սիմոնյան',
     phone: '+1 415 555 0101',
-    restaurant: 'Blue Fork',
+    restaurant: 'Pandok',
     courier: 'Nova Kai',
     paidMethod: 'CASH',
     totalAmount: 32.75,
-    status: 'delivering',
+    status: 'cooking',
     createdAt: '2026-04-17T10:22:00Z',
-    items: [
+    orderItems: [
       { id: 'i1', name: 'Spicy ramen', quantity: 1, price: 14.5 },
       { id: 'i2', name: 'Green tea', quantity: 2, price: 4.0 },
     ],
-    courierPhone: '+1 415 555 0133',
+    courierPhone: '+374 988545454',
     operatorName: 'Diana Rose',
     orderTime: '10:22',
     prepTime: '13։00',
     courierStatus: 'pickedUp',
+    customerPhone:"+374 981545454",
     address: {
       city: 'San Francisco',
       street: 'Market St',
@@ -109,13 +131,14 @@ const mockOrders: Order[] = [
     totalAmount: 18.0,
     status: 'ready',
     createdAt: '2026-04-17T11:05:00Z',
-    items: [{ id: 'i3', name: 'Carnitas tacos', quantity: 2, price: 8.0 }],
+    orderItems: [{ id: 'i3', name: 'Shaurma', quantity: 2, price: 1000 }],
     courierPhone: '+1 415 555 0266',
     operatorName: 'Miles Chen',
     paidMethod: 'ONLINE',
     orderTime: '11:05',
     prepTime: '12։00',
     courierStatus: 'atRestaurant',
+    customerPhone:"+374 981545454",
     address: {
       city: 'Oakland',
       street: '12th Ave',
@@ -133,7 +156,7 @@ const mockOrders: Order[] = [
     totalAmount: 26.5,
     status: 'cooking',
     createdAt: '2026-04-17T11:30:00Z',
-    items: [
+    orderItems: [
       { id: 'i4', name: 'Margherita pizza', quantity: 1, price: 12.5 },
       { id: 'i5', name: 'Caesar salad', quantity: 1, price: 7.5 },
       { id: 'i6', name: 'Chocolate soda', quantity: 1, price: 6.5 },
@@ -144,6 +167,7 @@ const mockOrders: Order[] = [
     orderTime: '11:30',
     prepTime: '11:30',
     courierStatus: 'enRoute',
+    customerPhone:"+374 981545454",
     address: {
       city: 'San Francisco',
       street: 'Valencia St',
@@ -178,11 +202,11 @@ const courierLocationOptions: { value: CourierLocationStatus; label: string }[] 
   { value: 'delivered', label: 'Հասել է' },
 ];
 
-const orderStatusOptions: { value: CourierLocationStatus; label: string }[] = [
-  { value: 'atRestaurant', label: 'Ռեստորանում է' },
-  { value: 'pickedUp', label: 'Պատվերը վերցրել է ' },
+const orderStatusOptions: { value: OrderStatus; label: string }[] = [
+  { value: 'cooking', label: 'Պատրաստվում է' },
+  { value: 'ready', label: 'Պատրաստ է' },
   { value: 'enRoute', label: 'Ճանապարհին է' },
-  { value: 'delivered', label: 'Հասել է' },
+  { value: 'done', label: 'Ավարտված' },
 ];
 
 export const OrdersPage = () => {
@@ -213,14 +237,32 @@ export const OrdersPage = () => {
     setOrderData((prev) => prev.map((order) => (order.id === id ? { ...order, courierStatus: value } : order)));
   }, []);
 
+  const handleOrderStatusChange = useCallback((id: string, value: OrderStatus) => {
+    setOrderData((prev) => prev.map((order) => (order.id === id ? { ...order, status: value } : order)));
+  }, []);
+
   const columns = useMemo<Column<Order>[]>(
     () => [
       { key: 'id', name: 'Կոդ', resizable: true, draggable: true },
       { key: 'customerName', name: 'Հաճախորդ', resizable: true, draggable: true },
+      { key: 'customerPhone', name: 'Հաճախորդի հեռ․', resizable: true, draggable: true },
       { key: 'orderTime', name: 'Գրանցման ժամանակը', resizable: true, draggable: true },
       { key: 'prepTime', name: 'Տրման ժամանակը', resizable: true, draggable: true },
       { key: 'restaurant', name: 'Ռեստորան', resizable: true, draggable: true },
       { key: 'courier', name: 'Առաքիչ', resizable: true, draggable: true },
+      { key: 'orderItems', name: 'Պատվեր', resizable: true, draggable: true ,
+        renderCell: ({ row }: { row: Order }) => {
+          const items = row.orderItems;
+          return (
+            <ItemChips>
+              {items.map((item) => (
+                <ItemChip key={item.id}>
+                  {item.quantity}h - {item.name}
+                </ItemChip>
+              ))}
+            </ItemChips>
+          )
+        },},
       {
         key: 'paidMethod',
         name: 'Վճարման եղանակը',
@@ -234,10 +276,11 @@ export const OrdersPage = () => {
             placeholder="Վճարման եղանակը"
             onChange={(value) => handlePaidMethodChange(row.id, value as PaymentMethod)}
             asTableCell
+            triggerDisplay="chip"
           />
         ),
       },
-      { key: 'courierPhone', name: 'Առաքիչի հեռախոսը', resizable: true, draggable: true },
+      { key: 'courierPhone', name: 'Առաքիչի հեռ․', resizable: true, draggable: true },
       {
         key: 'orderAddress',
         name: 'Պատվերի հասցե',
@@ -260,6 +303,7 @@ export const OrdersPage = () => {
             placeholder="Առաքիչի կարգավիճակը"
             onChange={(value) => handleCourierStatusChange(row.id, value as CourierLocationStatus)}
             asTableCell
+            triggerDisplay="chip"
           />
         ),
       },
@@ -269,12 +313,13 @@ export const OrdersPage = () => {
           <Dropdown
             value={row.status}
             options={orderStatusOptions}
-            placeholder="Առաքիչի կարգավիճակը"
-            onChange={(value) => handleCourierStatusChange(row.id, value as CourierLocationStatus)}
+            placeholder="Պատվերի կարգավիճակը"
+            onChange={(value) => handleOrderStatusChange(row.id, value as OrderStatus)}
             asTableCell
+            triggerDisplay="chip"
           />
         ),},
-      { key: 'totalAmount', name: 'Ընդհանուր', resizable: true, draggable: true },
+      { key: 'totalAmount', name: 'Գումարը', resizable: true, draggable: true },
     ],
     [handleCourierStatusChange, handlePaidMethodChange]
   );
@@ -324,7 +369,7 @@ export const OrdersPage = () => {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Փնտրել պատվերի համար, հաճախորդ, ռեստորան կամ առաքիչ"          />
+            placeholder="Որոնում։ Ռեստորան կամ առաքիչ"          />
           <Dropdown
             value={selectedCourier}
             options={couriers}

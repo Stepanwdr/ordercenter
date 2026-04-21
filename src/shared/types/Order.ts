@@ -1,4 +1,4 @@
-export type OrderStatus = 'new' | 'cooking' | 'ready' | 'delivering' | 'done';
+export type OrderStatus = 'new' | 'cooking' | 'ready' | 'enRoute' | 'done';
 export type OrderPaymentMethod = 'CASH' | 'ONLINE' | 'BANK POS' | 'IDRAM';
 export type OrderCourierStatus = 'atRestaurant' | 'pickedUp' | 'enRoute' | 'delivered';
 
@@ -33,8 +33,9 @@ export interface Order {
   totalAmount: number;
   status: OrderStatus;
   createdAt: string;
-  items: OrderItem[];
+  orderItems: OrderItem[];
   address: OrderAddress;
+  customerPhone: string;
 }
 
 export interface MenuItemOption {

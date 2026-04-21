@@ -187,7 +187,7 @@ export const RestaurantsPage = () => {
       <Header>
         <div>
           <Title>Ռեստորաններ</Title>
-          <FooterText>{restaurants.length} ռեստորան, {totalOpen} աւրեխներ</FooterText>
+          <FooterText>{restaurants.length} ռեստորան</FooterText>
         </div>
         <Button variant="primary" onClick={() => openForm()}>
           Ավելացնել ռեստորան
