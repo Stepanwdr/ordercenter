@@ -17,7 +17,7 @@ interface OrdersState {
   setCourierUpdate: (payload: { courierId: string; status: string; orderId?: string }) => void;
 }
 
-export const useOrdersStore = create<OrdersState>((set, get) => ({
+export const useOrdersStore = create<OrdersState>((set) => ({
   orders: [],
   loading: false,
   selectedOrder: null,
@@ -88,7 +88,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
   mergeOrder: (order) =>
     set((state) => ({ orders: state.orders.map((item) => (item.id === order.id ? { ...item, ...order } : item)) })),
 
-  setCourierUpdate: ({ courierId, status, orderId }) =>
+  setCourierUpdate: ({status, orderId }) =>
     set((state) => {
       if (!orderId) return state;
 

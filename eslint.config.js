@@ -24,18 +24,7 @@ export default defineConfig([
       'no-unused-vars': 'off',
 
       // включаем TS-версию
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        {
-          vars: 'all',
-          args: 'after-used',
-          ignoreRestSiblings: true,
-
-          // часто полезно:
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-        },
-      ],
+      '@typescript-eslint/no-unused-vars': 'warn'
     },
   },
 ])
