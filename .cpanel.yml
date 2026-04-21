@@ -1,0 +1,6 @@
+deployment:
+  tasks:
+    - cd /home/numjczhc/repositories/ordercenter
+    - npm install
+    - npm run build
+    - /bin/cp -R dist/* /home/numjczhc/public_html/
