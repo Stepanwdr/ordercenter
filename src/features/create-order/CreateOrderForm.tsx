@@ -125,7 +125,7 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
       totalAmount: cartTotal,
       status: 'new',
       createdAt: new Date().toISOString(),
-      items,
+      orderItems:items,
       address,
     });
     onClose();
