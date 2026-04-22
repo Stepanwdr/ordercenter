@@ -1,12 +1,9 @@
+---
 deployment:
   tasks:
-    # Фронтенд
-    - cd /home/numjczhc/repositories/ordercenter
-    - npm install
-    - npm run build
-    - /bin/cp -R dist/* /home/numjczhc/public_html/
+    - export DEPLOYPATH=/home/numjczhc/public_html/
+    - /bin/cp -R dist/* $DEPLOYPATH
 
-    # .htaccess для SPA + HTTPS
     - |
       echo '<IfModule mod_rewrite.c>
       RewriteEngine On
@@ -15,10 +12,4 @@ deployment:
       RewriteCond %{REQUEST_FILENAME} !-f
       RewriteCond %{REQUEST_FILENAME} !-d
       RewriteRule ^ index.html [L]
-      </IfModule>' > /home/numjczhc/public_html/.htaccess
-
-    # Бэкенд
-    - cd /home/numjczhc/server
-    - npm install
-    - npm run migrate
-    - touch /home/numjczhc/ordercenter/server/bin/www.js
+      </IfModule>' > $DEPLOYPATH/.htaccess

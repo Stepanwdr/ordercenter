@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
-
+import cors from "cors";
 import indexRouter from "./routes/index.js";
 import headers from "./middlewares/headers.js";
 import authorization from "./middlewares/authorization.js";
@@ -14,6 +14,19 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+
+const allowedOrigins = process.env.CORS_ORIGINS.split(",");
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS error"));
+    }
+  },
+  credentials: true
+}));
 // middlewares
 app.use(headers);
 app.use(logger("dev"));
