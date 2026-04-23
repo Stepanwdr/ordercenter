@@ -30,7 +30,7 @@ export const LoginPage = () => {
   };
 
   useEffect(() => {
-    fetch("https://dev.deliverydepartment.am/orders")
+
   }, []);
 
   return (
