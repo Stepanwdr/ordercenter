@@ -75,7 +75,7 @@ export function App() {
           <Route path="/couriers/:id" element={<CourierPage />} />
           <Route path="/restaurants" element={<RestaurantsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          {/*<Route path="/profile" element={<ProfilePage />} />*/}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>
