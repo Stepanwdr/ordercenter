@@ -69,7 +69,6 @@ const rolesOption =[{
       <Panel>
         <Header>
           <Title>Ստեղծել հաշիվ</Title>
-          <Description>Register a new OrderCenter profile to start managing dispatching and delivery operations.</Description>
         </Header>
         <Form onSubmit={handleSubmit}>
           <Field>
