@@ -7,6 +7,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
+  updateProfile: (updates: Partial<User>) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -92,6 +93,14 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     setUser(nextUser);
   };
 
+  const updateProfile = (updates: Partial<User>) => {
+    setUser((prev) => {
+      const next = { ...(prev as User), ...updates };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const logout = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem('order_center_access_token');
@@ -100,7 +109,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const value = useMemo(
-    () => ({ user, login, register, logout }),
+    () => ({ user, login, register, logout, updateProfile }),
     [user]
   );
 

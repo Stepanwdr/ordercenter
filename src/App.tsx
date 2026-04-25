@@ -10,6 +10,7 @@ import { SettingsPage } from '@pages/settings/SettingsPage';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { RegisterPage } from '@pages/auth/RegisterPage';
 import { PrivateRoutes } from './routes/PrivateRoutes';
+import { ProfilePage } from '@pages/profile/ProfilePage';
 import { PublicRoutes } from './routes/PublicRoutes';
 import { initializeSocket } from '@shared/lib/socket';
 import { Sidebar } from '@shared/ui/Sidebar';
@@ -74,6 +75,7 @@ export function App() {
           <Route path="/couriers/:id" element={<CourierPage />} />
           <Route path="/restaurants" element={<RestaurantsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>

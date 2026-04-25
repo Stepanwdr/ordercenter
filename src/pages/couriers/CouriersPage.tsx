@@ -102,7 +102,7 @@ export const CouriersPage = () => {
     closeDrawer();
   };
 
-  const displayedCouriers = apiCouriers ?? couriers;
+  const displayedCouriers = apiCouriers?.length ? apiCouriers : couriers;
   return (
     <div>
       <PageHeader>

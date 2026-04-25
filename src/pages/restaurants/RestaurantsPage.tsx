@@ -184,7 +184,7 @@ export const RestaurantsPage = () => {
 
   const totalOpen = useMemo(() => restaurants.filter((restaurant) => restaurant.status === 'open').length, [restaurants]);
 
-  const displayedRestaurants = apiRestaurants ?? restaurants;
+  const displayedRestaurants = apiRestaurants?.length  ? apiRestaurants : restaurants;
   return (
     <PageRoot>
       <Header>
