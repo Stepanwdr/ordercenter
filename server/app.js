@@ -13,7 +13,7 @@ dotenv.config();
 
 const app = express();
 
-const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+const corsOrigins = (process.env.CORS_ORIGINS || 'https://dev.deliverydepartment.am')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
