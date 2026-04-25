@@ -1,12 +1,18 @@
-import type { FormEvent } from 'react';
+import {type FormEvent, useMemo} from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@app/providers/AuthProvider';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
+import { Select } from '@shared/ui/Select';
 import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLink, Title } from './authStyles';
+import type { UserRole } from '@shared/types';
+import { registerSchema } from '@app/validation/registerSchema';
+import { toast } from 'react-toastify';
+import {Dropdown} from "@shared/ui/Dropdown.tsx";
 
 export const RegisterPage = () => {
+  const [role, setRole] = useState<UserRole>('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +21,7 @@ export const RegisterPage = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
@@ -28,25 +34,57 @@ export const RegisterPage = () => {
       return;
     }
 
+    // Client-side schema validation
     try {
-      register(name.trim(), email.trim(), password.trim());
+      registerSchema.parse({ name: name.trim(), email: email.trim(), password: password.trim(), role });
+    } catch (e) {
+      const err = e as any;
+      const message = err?.issues?.[0]?.message || err?.message || 'Invalid form data';
+      toast.error(message);
+      setError(message);
+      return;
+    }
+
+    try {
+      await register(name.trim(), email.trim(), password.trim(), role);
       navigate('/', { replace: true });
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Unable to create account');
     }
   };
-
+const rolesOption =[{
+  value: 'admin',
+  label: 'Administrator',
+  },
+  {
+    value:'courier',
+    label:'Առաքիչ'
+  },
+  {
+    value:'operator',
+    label:'Օպեռատոր'
+  }
+]
   return (
     <PageRoot>
       <Panel>
         <Header>
-          <Title>Create your account</Title>
+          <Title>Ստեղծել հաշիվ</Title>
           <Description>Register a new OrderCenter profile to start managing dispatching and delivery operations.</Description>
         </Header>
-
         <Form onSubmit={handleSubmit}>
           <Field>
-            Full name
+            Role
+            <Dropdown
+              value={role}
+              options={rolesOption}
+              placeholder="Role"
+              onChange={(value) => setRole(value as UserRole)}
+              triggerDisplay="chip"
+            />
+          </Field>
+          <Field>
+           Անուն Ազգանուն
             <Input
               value={name}
               placeholder="Alex Morgan"
@@ -55,7 +93,7 @@ export const RegisterPage = () => {
           </Field>
 
           <Field>
-            Email
+            Էլ․ Հասցե
             <Input
               type="email"
               value={email}
@@ -65,7 +103,7 @@ export const RegisterPage = () => {
           </Field>
 
           <Field>
-            Password
+            Գաղտնաբառ
             <Input
               type="password"
               value={password}
@@ -75,7 +113,7 @@ export const RegisterPage = () => {
           </Field>
 
           <Field>
-            Confirm password
+            Հաստատել գաղտնաբառը
             <Input
               type="password"
               value={confirmPassword}

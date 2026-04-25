@@ -201,7 +201,7 @@ export const Sidebar = () => {
       onMouseLeave={() => setOpen(false)}
     >
       <Brand open={open}>
-        <BrandTitle>OrderCenter</BrandTitle>
+        <BrandTitle>DeliveryDep</BrandTitle>
       </Brand>
 
       <NavList>

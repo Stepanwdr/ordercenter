@@ -7,6 +7,7 @@ import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { Drawer } from '@shared/ux/Drawer';
 import { sampleCouriers } from './courierData';
+import { useCouriersQuery } from '@app/hooks/dataApi';
 import type { Courier } from '@shared/types';
 
 const PageHeader = styled.div`
@@ -68,6 +69,7 @@ const initialCourierForm = {
 
 export const CouriersPage = () => {
   const [couriers, setCouriers] = useState<Courier[]>(sampleCouriers);
+  const { data: apiCouriers } = useCouriersQuery();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [formState, setFormState] = useState(initialCourierForm);
   const navigate = useNavigate();
@@ -100,6 +102,7 @@ export const CouriersPage = () => {
     closeDrawer();
   };
 
+  const displayedCouriers = apiCouriers ?? couriers;
   return (
     <div>
       <PageHeader>
@@ -123,7 +126,7 @@ export const CouriersPage = () => {
             </tr>
           </thead>
           <tbody>
-            {couriers.map((courier) => (
+            {displayedCouriers.map((courier) => (
               <tr key={courier.id}>
                 <Td>{courier.name}</Td>
                 <Td>{courier.phone}</Td>

@@ -1,11 +1,10 @@
-import {type FormEvent, useEffect} from 'react';
+import {type FormEvent} from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@app/providers/AuthProvider';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLink, Title } from './authStyles';
-import axios from "axios";
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -14,7 +13,7 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
@@ -23,18 +22,13 @@ export const LoginPage = () => {
     }
 
     try {
-      login(email.trim(), password.trim());
+      await login(email.trim(), password.trim());
       navigate('/', { replace: true });
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Unable to sign in');
     }
   };
 
-  useEffect(() => {
-   axios.post('dev.auth',  {
-     email: email,
-   })
-  }, []);
 
   return (
     <PageRoot>

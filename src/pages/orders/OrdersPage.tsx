@@ -6,9 +6,10 @@ import { Dropdown } from '@shared/ui/Dropdown';
 import { CreateOrderForm } from '@features/create-order/CreateOrderForm';
 import { Table } from '@shared/ux/Table';
 import type { Column } from 'react-data-grid';
-import type {Order, OrderCourierStatus, OrderStatus} from '@shared/types';
+import type {CourierStatus, Order, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
+import { useOrdersQuery } from '@app/hooks/dataApi';
 
 const Header = styled.div`
   display: flex;
@@ -94,6 +95,7 @@ const ItemChip = styled.span`
 const mockOrders: Order[] = [
   {
     id: 'o1',
+    paid:false,
     orderCode: 'ORD-1001',
     customerName: 'Արմինե Սիմոնյան',
     phone: '+1 415 555 0101',
@@ -123,6 +125,7 @@ const mockOrders: Order[] = [
   },
   {
     id: 'o2',
+    paid:false,
     orderCode: 'ORD-1002',
     customerName: 'Marcus Flynn',
     phone: '+1 415 555 0202',
@@ -148,6 +151,7 @@ const mockOrders: Order[] = [
   },
   {
     id: 'o3',
+    paid:false,
     orderCode: 'ORD-1003',
     customerName: 'Sara Lim',
     phone: '+1 415 555 0303',
@@ -191,7 +195,7 @@ const statusLabels: Record<(typeof statuses)[number], string> = {
 
 const paymentMethods = ['CASH', 'ONLINE', 'BANK POS', 'IDRAM'] as const;
 type PaymentMethod = (typeof paymentMethods)[number];
-type CourierLocationStatus = OrderCourierStatus;
+type CourierLocationStatus = CourierStatus;
 
 const paymentOptions = paymentMethods.map((method) => ({ value: method, label: method }));
 
@@ -210,6 +214,7 @@ const orderStatusOptions: { value: OrderStatus; label: string }[] = [
 ];
 
 export const OrdersPage = () => {
+  const { data: apiOrders } = useOrdersQuery();
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState<(typeof statuses)[number]>('all');
@@ -217,16 +222,16 @@ export const OrdersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [orderData, setOrderData] = useState<Order[]>(mockOrders);
   const pageSize = 4;
-
+  const orders=apiOrders && apiOrders.length ? apiOrders : orderData;
   const couriers = useMemo(
     () => [
       { value: 'all', label: 'Առաքիչների ցանկ' },
-      ...Array.from(new Set(orderData.map((order) => order.courier).filter(Boolean))).map((courier) => ({
+      ...Array.from(new Set((orders).map((order) => order.courier).filter(Boolean))).map((courier) => ({
         value: courier as string,
         label: courier as string,
       })),
     ],
-    [orderData]
+    [orders]
   );
 
   const handlePaidMethodChange = useCallback((id: string, value: PaymentMethod) => {
@@ -326,7 +331,7 @@ export const OrdersPage = () => {
 
   const filteredOrders = useMemo(
     () =>
-      orderData.filter((order) => {
+      (orders).filter((order) => {
         const query = search.toLowerCase().trim();
         const matchesSearch =
           query === '' ||
@@ -337,7 +342,7 @@ export const OrdersPage = () => {
 
         return matchesSearch && matchesStatus && matchesCourier;
       }),
-    [search, activeStatus, selectedCourier, orderData]
+    [search, activeStatus, selectedCourier, apiOrders, orderData]
   );
 
   useEffect(() => {

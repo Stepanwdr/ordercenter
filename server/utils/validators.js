@@ -8,7 +8,7 @@ export const schemas = {
   register: z.object({
     email: z.string().email(),
     password: z.string().min(8).max(72),
-    role: roleSchema.default('customer'),
+    role: roleSchema.default('operator'),
   }),
   login: z.object({
     email: z.string().email(),

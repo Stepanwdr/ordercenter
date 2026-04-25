@@ -1,6 +1,7 @@
 const ALLOW_ORIGINS = [
   'http://localhost:3000',
   '127.0.0.1:8081',
+  'http://localhost:5173',
 ];
 
 export default function headers(req, res, next) {

@@ -14,6 +14,11 @@ router.get('/', (req, res) => {
   });
 });
 
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/restaurants', restaurantRoutes);

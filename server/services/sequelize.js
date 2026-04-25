@@ -6,7 +6,7 @@ dotenv.config();
 const {
   MYSQL_HOST = '127.0.0.1',
   MYSQL_PORT = '3306',
-  MYSQL_NAME = 'order_center',
+  MYSQL_NAME = 'orderapp',
   MYSQL_USERNAME = 'root',
   MYSQL_PASSWORD = '',
   NODE_ENV = 'development',

@@ -5,6 +5,7 @@ import { Drawer } from '@shared/ux/Drawer';
 import { Input } from '@shared/ui/Input';
 import type { Restaurant } from '@shared/types';
 import { sampleRestaurants } from './restaurantData';
+import { useRestaurantsQuery } from '@app/hooks/dataApi';
 
 const PageRoot = styled.main`
   padding: 32px;
@@ -128,6 +129,7 @@ const initialFormState = {
 
 export const RestaurantsPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>(sampleRestaurants);
+  const { data: apiRestaurants } = useRestaurantsQuery();
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [formState, setFormState] = useState(initialFormState);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -182,6 +184,7 @@ export const RestaurantsPage = () => {
 
   const totalOpen = useMemo(() => restaurants.filter((restaurant) => restaurant.status === 'open').length, [restaurants]);
 
+  const displayedRestaurants = apiRestaurants ?? restaurants;
   return (
     <PageRoot>
       <Header>
@@ -194,7 +197,7 @@ export const RestaurantsPage = () => {
         </Button>
       </Header>
       <Grid>
-        {restaurants.map((restaurant) => (
+        {displayedRestaurants.map((restaurant) => (
           <Card key={restaurant.id}>
             <CardHeader>
               <div>

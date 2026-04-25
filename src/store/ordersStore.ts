@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { ordersApi } from '../shared/api/orders';
-import type {Order, OrderStatus} from "../shared/types";
+import { ordersApi } from '@shared/api/orders';
+import type {Order, OrderStatus} from "@shared/types";
 
 interface OrdersState {
   orders: Order[];

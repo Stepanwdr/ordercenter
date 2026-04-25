@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import type { User } from '@shared/types';
+import type { User, UserRole } from '@shared/types';
+import { api } from '@shared/api/base';
 
 type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => void;
-  register: (name: string, email: string, password: string) => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
 };
 
@@ -50,50 +51,51 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     }
   }, []);
 
-  const login = (email: string, password: string) => {
-    const registeredUser = loadRegisteredUsers().find(
-      (registered) => registered.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (registeredUser && registeredUser.password !== password) {
-      throw new Error('Incorrect password');
+  const login = async (email: string, password: string) => {
+    // Call backend login API via axios base api
+    const response = await api.post('/auth/login', { email, password });
+    const data = response?.data?.data;
+    if (!data?.user || !data?.accessToken) {
+      throw new Error('Invalid login response');
     }
-
     const nextUser = {
-      email,
-      name: registeredUser?.name,
-    };
+      email: data.user.email,
+      name: data.user.name,
+      role: data.user.role,
+    } as User;
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
+    localStorage.setItem('order_center_access_token', data.accessToken);
+    localStorage.setItem('order_center_refresh_token', data.refreshToken);
     setUser(nextUser);
   };
 
-  const register = (name: string, email: string, password: string) => {
-    const users = loadRegisteredUsers();
-    const normalizedEmail = email.toLowerCase();
-    const hasUser = users.some((registered) => registered.email.toLowerCase() === normalizedEmail);
-
-    if (hasUser) {
-      throw new Error('An account with this email already exists');
-    }
-
-    const nextUser = {
+  const register = async (name: string, email: string, password: string, role: UserRole) => {
+    // Call backend registration API via axios base api
+    const response = await api.post('/auth/register', {
       name,
       email,
-    };
-
-    saveRegisteredUsers([
-      ...users,
-      {
-        ...nextUser,
-        password,
-      },
-    ]);
+      password,
+      role,
+    });
+    const data = response?.data?.data;
+    if (!data?.user || !data?.accessToken) {
+      throw new Error('Invalid registration response');
+    }
+    const nextUser = {
+      email: data.user.email,
+      name: data.user.name,
+      role: data.user.role,
+    } as User;
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
+    localStorage.setItem('order_center_access_token', data.accessToken);
+    localStorage.setItem('order_center_refresh_token', data.refreshToken);
     setUser(nextUser);
   };
 
   const logout = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem('order_center_access_token');
+    localStorage.removeItem('order_center_refresh_token');
     setUser(null);
   };
 
