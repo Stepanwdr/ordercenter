@@ -1,4 +1,4 @@
-import type { CourierStatus } from "./User";
+import type {CourierStatus} from "@shared/types/Courier.ts";
 
 export type OrderStatus = 'new' | 'cooking' | 'ready' | 'enRoute' | 'done';
 export type OrderPaymentMethod = 'CASH' | 'ONLINE' | 'BANK POS' | 'IDRAM';

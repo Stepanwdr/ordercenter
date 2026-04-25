@@ -4,6 +4,7 @@ import type { Order } from "@shared/types/Order.ts";
 export type UserRole = 'admin' | 'courier'| 'customer' | 'operator'
 
 export interface User {
+  id: string;
   email?: string;
   name?: string;
   role?: UserRole;

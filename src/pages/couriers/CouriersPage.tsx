@@ -96,7 +96,7 @@ export const CouriersPage = () => {
         phone: formState.phone.trim(),
         status: formState.status,
         currentOrder: formState.currentOrder.trim() || undefined,
-      },
+      } as Courier,
     ]);
 
     closeDrawer();
@@ -133,7 +133,7 @@ export const CouriersPage = () => {
                 <Td>
                   <Badge status={courier.status}>{courier.status}</Badge>
                 </Td>
-                <Td>{courier.currentOrder ?? 'None'}</Td>
+                <Td>{'None'}</Td>
                 <Td>
                   <Button variant="ghost" onClick={() => navigate(`/couriers/${courier.id}`)}>
                     Track

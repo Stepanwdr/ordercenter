@@ -98,7 +98,7 @@ export const CourierPage = () => {
     );
   }
 
-  const statusLabel = courier.status === 'delivering' ? 'Առաքվում են' : courier.status === 'idle' ? 'Հանգստացածը' : 'Անցանց';
+  // const statusLabel = courier.status === 'delivering' ? 'Առաքվում են' : courier.status === 'idle' ? 'Հանգստացածը' : 'Անցանց';
 
   return (
     <PageRoot>
