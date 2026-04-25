@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@app/providers/AuthProvider';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
-import { Select } from '@shared/ui/Select';
 import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLink, Title } from './authStyles';
 import type { UserRole } from '@shared/types';
 import { registerSchema } from '@app/validation/registerSchema';
