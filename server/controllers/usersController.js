@@ -1,33 +1,29 @@
-import {
-  Users,
-} from '../models/index.js';
-import jwt from "jsonwebtoken";
-const { JWT_SECRET  } = process.env;
+import UserService from '../services/userService.js';
 
 class UsersController {
-  static myAccount = async (req, res, next) => {
-    try {
-      const { authorization } = req.headers;
-      const token = authorization.replace(/^Bearer /, '');
-      const data = await jwt.verify(token, JWT_SECRET);
-      const user = await Users.findByPk(data.userId);
+  static list = async (req, res) => {
+    const users = await UserService.listUsers();
+    res.json({
+      success: true,
+      data: users,
+    });
+  };
 
-      if (user && user.status !== 'active') {
-        res.status(403).json({
-          errors: {
-            status: 'You are deactivated',
-          },
-        });
-        return;
-      }
-      res.json({
-        status: 'ok',
-        data: {...user.toJSON()},
-        loginService: req.loginService,
-      });
-    } catch (e) {
-      next(e);
-    }
+  static me = async (req, res) => {
+    const user = await UserService.getMe(req.auth.userId);
+    res.json({
+      success: true,
+      data: user,
+    });
+  };
+
+  static create = async (req, res) => {
+    const user = await UserService.createUser(req.validated);
+    res.status(201).json({
+      success: true,
+      data: user,
+    });
   };
 }
+
 export default UsersController;

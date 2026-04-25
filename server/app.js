@@ -1,62 +1,45 @@
-import createError from "http-errors";
-import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
-import cookieParser from "cookie-parser";
-import logger from "morgan";
-import cors from "cors";
-import indexRouter from "./routes/index.js";
-import headers from "./middlewares/headers.js";
-import authorization from "./middlewares/authorization.js";
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import router from './routes/index.js';
+import authorization from './middlewares/authorization.js';
+import errorHandler from './middlewares/errorHandler.js';
+import notFound from './middlewares/notFound.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://dev.deliverydepartment.am",
-  "https://deliverydepartment.am"
-];
+const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS error"));
-    }
-  },
-  credentials: true
-}));
-// middlewares
-app.use(headers);
-app.use(logger("dev"));
+      callback(new Error('CORS origin is not allowed'));
+    },
+    credentials: true,
+  })
+);
+
+app.use(helmet());
+app.use(morgan('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-app.use(express.static(path.join(__dirname, "public")));
 app.use(authorization);
-
-app.use("/", indexRouter);
-
-// 404
-app.use((req, res, next) => {
-  next(createError(404));
-});
-
-// error handler
-app.use((err, req, res, next) => {
-  res.status(err.status || 500);
-  res.json({
-    status: "error",
-    errors: err.errors,
-    message: err.message,
-    stack: err.stack,
-  });
-});
+app.use(router);
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;

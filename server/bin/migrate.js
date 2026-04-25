@@ -1,17 +1,15 @@
-import {
-  Users
-} from '../models/index.js';
+#!/usr/bin/env node
+import dotenv from 'dotenv';
+import { sequelize } from '../models/index.js';
 
-const models = {
-  Users,
-};
+dotenv.config();
 
-async function main() {
-  for (const i in models) {
-    console.log(i);
-    await models[i].sync({ alter: true });
-  }
+try {
+  await sequelize.authenticate();
+  await sequelize.sync({ alter: true });
+  console.log('Database schema synchronized successfully.');
   process.exit(0);
+} catch (error) {
+  console.error('Failed to synchronize database schema.', error);
+  process.exit(1);
 }
-
-main().catch(console.error);

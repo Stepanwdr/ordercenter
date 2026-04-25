@@ -5,6 +5,7 @@ import { useAuth } from '@app/providers/AuthProvider';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLink, Title } from './authStyles';
+import axios from "axios";
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -30,7 +31,9 @@ export const LoginPage = () => {
   };
 
   useEffect(() => {
-
+   axios.post('dev.auth',  {
+     email: email,
+   })
   }, []);
 
   return (

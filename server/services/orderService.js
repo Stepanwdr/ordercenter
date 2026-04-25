@@ -1,0 +1,107 @@
+import { Courier, Order, Restaurant, User, sequelize } from '../models/index.js';
+import AppError from '../utils/AppError.js';
+import { canTransitionOrderStatus } from '../utils/orderFlow.js';
+
+class OrderService {
+  static async listOrders() {
+    return Order.findAll({
+      include: [
+        { model: User, as: 'customer' },
+        { model: User, as: 'courier' },
+        { model: Restaurant, as: 'restaurant' },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+  }
+
+  static async createOrder(payload, authUser) {
+    return sequelize.transaction(async (transaction) => {
+      const customerId = payload.customerId || authUser.userId;
+      const [customer, restaurant] = await Promise.all([
+        User.findByPk(customerId, { transaction }),
+        Restaurant.findByPk(payload.restaurantId, { transaction }),
+      ]);
+
+      if (!customer) {
+        throw new AppError(404, 'Customer not found');
+      }
+
+      if (!restaurant) {
+        throw new AppError(404, 'Restaurant not found');
+      }
+
+      return Order.create(
+        {
+          status: 'pending',
+          price: payload.price,
+          customerId,
+          restaurantId: payload.restaurantId,
+        },
+        { transaction }
+      );
+    });
+  }
+
+  static async assignCourier(orderId, courierId) {
+    return sequelize.transaction(async (transaction) => {
+      const [order, courierProfile, courierUser] = await Promise.all([
+        Order.findByPk(orderId, { transaction }),
+        Courier.findByPk(courierId, { transaction }),
+        User.findByPk(courierId, { transaction }),
+      ]);
+
+      if (!order) {
+        throw new AppError(404, 'Order not found');
+      }
+
+      if (!courierProfile || !courierUser || courierUser.role !== 'courier') {
+        throw new AppError(404, 'Courier not found');
+      }
+
+      order.courierId = courierId;
+      if (order.status === 'pending') {
+        order.status = 'accepted';
+      }
+
+      courierProfile.status = 'busy';
+
+      await Promise.all([
+        order.save({ transaction }),
+        courierProfile.save({ transaction }),
+      ]);
+
+      return order;
+    });
+  }
+
+  static async updateOrderStatus(orderId, nextStatus) {
+    return sequelize.transaction(async (transaction) => {
+      const order = await Order.findByPk(orderId, { transaction });
+
+      if (!order) {
+        throw new AppError(404, 'Order not found');
+      }
+
+      if (!canTransitionOrderStatus(order.status, nextStatus)) {
+        throw new AppError(409, `Cannot move order from ${order.status} to ${nextStatus}`);
+      }
+
+      order.status = nextStatus;
+      await order.save({ transaction });
+
+      if (nextStatus === 'completed' && order.courierId) {
+        await Courier.update(
+          { status: 'available' },
+          {
+            where: { userId: order.courierId },
+            transaction,
+          }
+        );
+      }
+
+      return order;
+    });
+  }
+}
+
+export default OrderService;

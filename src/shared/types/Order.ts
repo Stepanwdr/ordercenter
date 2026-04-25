@@ -1,6 +1,7 @@
+import type { CourierStatus } from "./User";
+
 export type OrderStatus = 'new' | 'cooking' | 'ready' | 'enRoute' | 'done';
 export type OrderPaymentMethod = 'CASH' | 'ONLINE' | 'BANK POS' | 'IDRAM';
-export type OrderCourierStatus = 'atRestaurant' | 'pickedUp' | 'enRoute' | 'delivered';
 
 export interface OrderItem {
   id: string;
@@ -29,13 +30,14 @@ export interface Order {
   paidMethod: OrderPaymentMethod;
   orderTime: string;
   prepTime: string;
-  courierStatus: OrderCourierStatus;
+  courierStatus: CourierStatus;
   totalAmount: number;
   status: OrderStatus;
   createdAt: string;
   orderItems: OrderItem[];
   address: OrderAddress;
   customerPhone: string;
+  paid: boolean;
 }
 
 export interface MenuItemOption {
