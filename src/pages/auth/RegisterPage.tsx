@@ -11,7 +11,7 @@ import { toast } from 'react-toastify';
 import {Dropdown} from "@shared/ui/Dropdown.tsx";
 
 export const RegisterPage = () => {
-  const [role, setRole] = useState<UserRole>('');
+  const [role, setRole] = useState<UserRole>('operator');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
