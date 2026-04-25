@@ -24,14 +24,6 @@ const AppShell = styled.div`
   min-width: 0;
   background: radial-gradient(circle at top left, rgba(74, 84, 169, 0.18), transparent 30%), #090b11;
 `;
-const AppGrid = styled.div`
-  position: relative;
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: auto;
-  min-width: 0;
-  background: radial-gradient(circle at top left, rgba(74, 84, 169, 0.18), transparent 30%), #090b11;
-`;
 
 const Content = styled.main`
   padding: 32px;
