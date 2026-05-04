@@ -12,5 +12,7 @@ const router = express.Router();
 
 router.get('/', asyncHandler(RestaurantsController.list));
 router.post('/', authorizeRole('admin', 'operator'), upload.single('photo'), validate(schemas.createRestaurant), asyncHandler(RestaurantsController.create));
+router.put('/:id', authorizeRole('admin', 'operator'), upload.single('photo'), validate(schemas.updateRestaurant), asyncHandler(RestaurantsController.update));
+router.delete('/:id', authorizeRole('admin', 'operator'), asyncHandler(RestaurantsController.delete));
 
 export default router;

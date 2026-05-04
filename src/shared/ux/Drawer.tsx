@@ -62,16 +62,16 @@ const Panel = styled.div<{ position: DrawerPosition; $visible: boolean }>`
       : slideOutTop} 260ms ease forwards;
   width: 100%;
   max-height: 98vh;
-    height: 100%;
-  background:  rgba(18, 24, 44, 0.98);
+  height: 100%;
+    background:  rgba(18, 24, 44, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
   border-radius: ${({ position }) => (position === 'bottom' ? '24px 24px 0 0' : '0 0 24px 24px')};
   overflow: hidden;
-  display: grid;
-  grid-template-rows: auto;
+
   padding: 24px;
   will-change: transform, opacity;
+  
 `;
 
 const Header = styled.div`

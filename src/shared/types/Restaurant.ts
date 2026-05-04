@@ -2,10 +2,7 @@ export type RestaurantStatus = 'open' | 'busy' | 'closed';
 
 
 export interface Address{
-  city?: string;
-  street?: string;
-  building?: string;
-  apartment?: string;
+  address: string;
   comment?: string;
 }
 

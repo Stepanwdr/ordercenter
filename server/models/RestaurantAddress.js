@@ -14,20 +14,8 @@ RestaurantAddress.init(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    city: {
-      type: DataTypes.STRING(128),
-      allowNull: true,
-    },
-    street: {
-      type: DataTypes.STRING(256),
-      allowNull: true,
-    },
-    building: {
-      type: DataTypes.STRING(64),
-      allowNull: true,
-    },
-    apartment: {
-      type: DataTypes.STRING(64),
+    address: {
+      type: DataTypes.STRING(512),
       allowNull: true,
     },
     comment: {

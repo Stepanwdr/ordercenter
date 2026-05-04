@@ -74,6 +74,35 @@ export const useCreateRestaurantMutation = () => {
 
 };
 
+export const useUpdateRestaurantMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, unknown, { id: string; payload: CreateRestaurantPayload | FormData }>({
+    mutationKey: ['update-restaurant'],
+    mutationFn: async ({ id, payload }) => {
+      const isForm = payload instanceof FormData;
+      return api.put<{ data: any }>(`/restaurants/${id}`, payload, {
+        headers: isForm ? { 'Content-Type': 'multipart/form-data' } : {},
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['restaurants'] });
+    },
+  });
+};
+
+export const useDeleteRestaurantMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationKey: ['delete-restaurant'],
+    mutationFn: async (id) => {
+      await api.delete(`/restaurants/${id}`);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['restaurants'] });
+    },
+  });
+};
+
 export const useCouriersQuery = () => {
   return useQuery<Courier[]>({
     queryKey: ['couriers'],

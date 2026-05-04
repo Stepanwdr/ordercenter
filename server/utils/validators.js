@@ -40,10 +40,35 @@ export const schemas = {
       },
       z.array(
         z.object({
-          city: z.string().min(1).max(128).optional(),
-          street: z.string().min(1).max(256).optional(),
-          building: z.string().optional(),
-          apartment: z.string().optional(),
+          address: z.string().min(1).max(128).optional(),
+          comment: z.string().optional(),
+        })
+      )
+    ).optional(),
+  }),
+  updateRestaurant: z.object({
+    name: z.string().min(2).max(255).optional(),
+    photo: z.union([
+      z.string().url(),
+      z.null()
+    ]).optional(),
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
+    phone: z.string().min(2).max(12).optional(),
+    addresses: z.preprocess(
+      (v) => {
+        if (typeof v === 'string') {
+          try {
+            return JSON.parse(v);
+          } catch {
+            return [];
+          }
+        }
+        return v;
+      },
+      z.array(
+        z.object({
+          address: z.string().min(1).max(128).optional(),
           comment: z.string().optional(),
         })
       )
