@@ -4,6 +4,10 @@ import Restaurant from './Restaurant.js';
 import Courier from './Courier.js';
 import Order from './Order.js';
 import RefreshToken from './RefreshToken.js';
+import Menu from './Menu.js';
+import MenuItem from './MenuItem.js';
+import OrderItem from './OrderItem.js';
+import RestaurantAddress from './RestaurantAddress.js';
 
 User.hasMany(Restaurant, {
   as: 'ownedRestaurants',
@@ -65,6 +69,54 @@ RefreshToken.belongsTo(User, {
   foreignKey: 'userId',
 });
 
+// Menu related associations
+Restaurant.hasMany(Menu, {
+  as: 'menus',
+  foreignKey: 'restaurantId',
+});
+
+Menu.belongsTo(Restaurant, {
+  as: 'restaurant',
+  foreignKey: 'restaurantId',
+});
+
+Menu.hasMany(MenuItem, {
+  as: 'items',
+  foreignKey: 'menuId',
+});
+
+MenuItem.belongsTo(Menu, {
+  as: 'menu',
+  foreignKey: 'menuId',
+});
+
+// Order items associations
+Order.hasMany(OrderItem, {
+  as: 'orderItems',
+  foreignKey: 'orderId',
+});
+
+OrderItem.belongsTo(Order, {
+  as: 'order',
+  foreignKey: 'orderId',
+});
+
+OrderItem.belongsTo(MenuItem, {
+  as: 'menuItem',
+  foreignKey: 'menuItemId',
+});
+
+// RestaurantAddress associations
+Restaurant.hasMany(RestaurantAddress, {
+  as: 'addresses',
+  foreignKey: 'restaurantId',
+});
+
+RestaurantAddress.belongsTo(Restaurant, {
+  as: 'restaurant',
+  foreignKey: 'restaurantId',
+});
+
 export {
   sequelize,
   User,
@@ -72,4 +124,8 @@ export {
   Courier,
   Order,
   RefreshToken,
+  Menu,
+  MenuItem,
+  OrderItem,
+  RestaurantAddress
 };

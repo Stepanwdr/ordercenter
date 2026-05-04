@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import router from './routes/index.js';
+import path from 'path';
+import uploadRouter from './routes/upload.js';
 import authorization from './middlewares/authorization.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
@@ -37,9 +39,15 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// Serve uploaded images publicly before auth middleware
+app.use('/uploads', express.static(path.resolve('uploads')));
+app.use('/upload', uploadRouter);
 app.use(authorization);
 app.use(router);
-app.use(notFound);
+
+// (uploads routes mounted earlier). 404 handler and error handler below
+// 404 handler and error handler after route setup
+// (no additional upload routes here)
 app.use(errorHandler);
 
 export default app;

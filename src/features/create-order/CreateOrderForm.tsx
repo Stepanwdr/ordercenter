@@ -5,12 +5,9 @@ import { Input } from '@shared/ui/Input';
 import { useOrdersStore } from '@store/ordersStore';
 import type {OrderAddress, OrderItem} from "@entities/order/types.ts";
 import {Dropdown} from "@shared/ui/Dropdown.tsx";
+import { useRestaurantsQuery, useRestaurantMenusQuery, useMenuItemsQuery } from '@app/hooks/dataApi';
 
-const restaurants = [
-  { value: 'rest-1', label: 'Kinetic Kitchen', eta: '18 min', rating: 4.9 },
-  { value: 'rest-2', label: 'Slate Noodles', eta: '14 min', rating: 4.7 },
-  { value: 'rest-3', label: 'Glass Grill', eta: '20 min', rating: 4.8 },
-];
+const restaurants = [];
 
 const menuOptions = [
   { id: 'm1', name: 'Energize Latte', category: 'Drinks', price: 5.5, description: 'Velvety oat milk latte' },
@@ -22,7 +19,7 @@ const menuOptions = [
 
 const DrawerLayout = styled.div`
     display: grid;
-    grid-template-columns: minmax(320px, 1.25fr) minmax(300px, 0.75fr);
+    grid-template-columns: minmax(320px, 1.25fr) minmax(300px, 0.35fr);
     gap: 24px;
 `;
 
@@ -89,6 +86,7 @@ const menuCategories = ['Drinks', 'Food', 'Meat'] as const;
 export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
   const [activeCategory, setActiveCategory] = useState<typeof menuCategories[number]>('Drinks');
   const [restaurant, setRestaurant] = useState('');
+  const [selectedMenuId, setSelectedMenuId] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState<OrderAddress>({ city: '', street: '', building: '', apartment: '', comment: '' });
@@ -97,22 +95,24 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
   const createOrder = useOrdersStore((state) => state.createOrder);
   const loading = useOrdersStore((state) => state.loading);
 
-  const filteredMenu = useMemo(
-    () => menuOptions.filter((item) => item.category === activeCategory),
-    [activeCategory]
-  );
+  // Load actual data from API if available
+  const { data: restaurantList } = useRestaurantsQuery();
+  const { data: menusForRestaurant } = useRestaurantMenusQuery(restaurant || null);
+  const { data: menuItemsForMenu } = useMenuItemsQuery(selectedMenuId || null);
+  const filteredMenu = useMemo(() => {
+    // Prefer menuItems from API if available, otherwise fallback to static menuOptions
+    return menuItemsForMenu?.length ? menuItemsForMenu : menuOptions;
+  }, [menuItemsForMenu]);
 
   const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const addItem = (menuItem: typeof menuOptions[number]) => {
+  const addItem = (menuItem: any) => {
     setItems((prev) => {
-      const existing = prev.find((item) => item.id === menuItem.id);
+      const existing = prev.find((it) => it.id === menuItem.id);
       if (existing) {
-        return prev.map((item) =>
-          item.id === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+        return prev.map((it) => (it.id === menuItem.id ? { ...it, quantity: it.quantity + 1 } : it));
       }
-      return [...prev, { id: menuItem.id, name: menuItem.name, quantity: 1, price: menuItem.price }];
+      return [...prev, { menuItemId: menuItem.id, name: menuItem.name, quantity: 1, price: menuItem.price }];
     });
   };
 
@@ -121,11 +121,11 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
       orderCode: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
       customerName,
       phone,
-      restaurant,
+      restaurantId: restaurant,
       totalAmount: cartTotal,
       status: 'new',
       createdAt: new Date().toISOString(),
-      orderItems:items,
+      orderItems: items,
       address,
     });
     onClose();
@@ -139,11 +139,22 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
           <Label>Ռեստորան</Label>
           <Dropdown
             value={restaurant}
-            options={restaurants}
+            options={restaurantList?.map((r: any) => ({ value: r.id, label: r.name })) ?? []}
             placeholder="Ընրել ռեստորանը"
             onChange={(value) => setRestaurant(value)}
           />
         </FieldGroup>
+        {restaurant && menusForRestaurant && menusForRestaurant?.length > 0 && (
+          <FieldGroup>
+            <Label>Մենյու</Label>
+            <Dropdown
+              value={selectedMenuId}
+              options={menusForRestaurant.map((m: any) => ({ value: m.id, label: m.name }))}
+              placeholder="Ընտրել меню"
+              onChange={(value) => setSelectedMenuId(value)}
+            />
+          </FieldGroup>
+        )}
 
         <FieldGroup>
           <Label>Պատվիրատու</Label>

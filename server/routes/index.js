@@ -4,6 +4,8 @@ import userRoutes from './users.js';
 import restaurantRoutes from './restaurants.js';
 import orderRoutes from './orders.js';
 import courierRoutes from './courier.js';
+import menusRoutes from './menus.js';
+import menuItemsRoutes from './menuItems.js';
 
 const router = express.Router();
 
@@ -23,6 +25,8 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/restaurants', restaurantRoutes);
 router.use('/orders', orderRoutes);
-router.use('/courier', courierRoutes);
+// New menu-related routes
+router.use('/restaurants/:restaurantId/menus', menusRoutes);
+router.use('/menus', menuItemsRoutes);
 
 export default router;

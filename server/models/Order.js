@@ -11,7 +11,7 @@ Order.init(
       primaryKey: true,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'accepted', 'cooking', 'ready', 'delivering', 'completed'),
+      type: DataTypes.ENUM('pending','accepted','cooking','ready','picked_up','delivering','completed','cancelled'),
       allowNull: false,
       defaultValue: 'pending',
     },

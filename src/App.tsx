@@ -1,5 +1,4 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { useEffect } from 'react';
 import styled from 'styled-components';
 import { DashboardPage } from '@pages/dashboard/DashboardPage';
 import { OrdersPage } from '@pages/orders/OrdersPage';
@@ -7,6 +6,7 @@ import { CouriersPage } from '@pages/couriers/CouriersPage';
 import { CourierPage } from '@pages/couriers/CourierPage';
 import { RestaurantsPage } from '@pages/restaurants/RestaurantsPage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
+import { MenuAdminPage } from '@pages/admin/MenuAdminPage';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { RegisterPage } from '@pages/auth/RegisterPage';
 import { PrivateRoutes } from './routes/PrivateRoutes';
@@ -76,6 +76,8 @@ export function App() {
           <Route path="/restaurants" element={<RestaurantsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/*<Route path="/profile" element={<ProfilePage />} />*/}
+          {/*<Route path="/admin/menu" element={<MenuAdminPage />} />*/}
+          {/*<Route path="/restaurants/create" element={<CreateRestaurantPage />} />*/}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>

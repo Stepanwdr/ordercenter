@@ -9,7 +9,7 @@ const PUBLIC_ROUTES = new Set([
 
 export default function authorization(req, res, next) {
   const routeKey = `${req.method.toUpperCase()}:${req.path}`;
-  console.log(routeKey)
+  console.log({routeKey})
   if (PUBLIC_ROUTES.has(routeKey)) {
     next();
     return;

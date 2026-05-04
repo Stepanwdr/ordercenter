@@ -14,6 +14,14 @@ Restaurant.init(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    phone:{
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    photo: {
+      type: DataTypes.STRING(1024),
+      allowNull: true,
+    },
     ownerId: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -34,6 +42,7 @@ Restaurant.init(
     indexes: [
       { fields: ['owner_id'] },
       { fields: ['name'] },
+      { fields: [{ name: 'photo', length: 255 }], },
       { fields: ['lat', 'lng'] },
     ],
   }

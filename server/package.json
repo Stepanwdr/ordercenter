@@ -11,7 +11,10 @@
     "dev": "nodemon -r dotenv/config ./bin/www.js",
     "start:prod": "node ./bin/www.js",
     "migrate": "node -r dotenv/config ./bin/migrate.js",
-    "seed": "node -r dotenv/config ./bin/seed.js"
+    "migrate:addresses": "node ./bin/migrateRestaurantAddresses.js",
+    "rm:restaurant-address": "node ./bin/dropRestaurantAddressColumn.js",
+    "seed": "node -r dotenv/config ./bin/seed.js",
+    "migrate:menus": "node ./bin/migrateMenu.js"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",

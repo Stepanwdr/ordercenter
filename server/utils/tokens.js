@@ -2,9 +2,9 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
 const {
-  JWT_SECRET = 'change-me',
-  ACCESS_TOKEN_TTL = '15m',
-  REFRESH_TOKEN_TTL_DAYS = '30',
+  JWT_SECRET = 'change-mesd',
+  ACCESS_TOKEN_TTL = '300m',
+  REFRESH_TOKEN_TTL_DAYS = '150',
 } = process.env;
 
 export const signAccessToken = (payload) =>
