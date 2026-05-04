@@ -273,9 +273,9 @@ export const RestaurantsPage = () => {
               />
             </Field>
             <label>Фото</label>
-            <ImageUploader value={photoUrl} onChange={(url,file)=>{
-              setPhotUrl(url)
-              setPhotoFile(file)
+            <ImageUploader value={photoUrl} onChange={(payload)=>{
+              setPhotUrl(payload?.url || '')
+              setPhotoFile(payload?.file as File | null)
             }} />
             {/*<Input placeholder="URL или оставьте пустым" value={photoUrl} onChange={(e) => setPhotoFile(e.target.value)} />*/}
             <Field>
