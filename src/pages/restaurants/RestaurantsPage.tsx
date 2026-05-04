@@ -4,7 +4,6 @@ import { Button } from '@shared/ui/Button';
 import { Drawer } from '@shared/ux/Drawer';
 import { Input } from '@shared/ui/Input';
 import type {Address, Restaurant} from '@shared/types';
-import { sampleRestaurants } from './restaurantData';
 import {useCreateRestaurantMutation, useRestaurantsQuery} from '@app/hooks/dataApi';
 import {ImageUploader} from "@shared/ui/ImageUploader.tsx";
 
@@ -153,7 +152,6 @@ export const RestaurantsPage = () => {
   const [apartment, setApartment] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(sampleRestaurants);
   const { data: apiRestaurants } = useRestaurantsQuery();
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [formState, setFormState] = useState(initialFormState);
@@ -164,7 +162,7 @@ export const RestaurantsPage = () => {
   const openForm = (restaurant?: Restaurant) => {
     if (restaurant) {
       setSelectedRestaurant(restaurant);
-      setFormState(restaurant);
+      // setFormState(restaurant);
     } else {
       setSelectedRestaurant(null);
       setFormState(initialFormState);
@@ -203,7 +201,6 @@ export const RestaurantsPage = () => {
 
   const deleteRestaurant = (id: string) => {
     if (!window.confirm('Удалить ресторан?')) return;
-    setRestaurants((current) => current.filter((item) => item.id !== id));
   };
 
 
@@ -214,7 +211,7 @@ export const RestaurantsPage = () => {
       <Header>
         <div>
           <Title>Ռեստորաններ</Title>
-          <FooterText>{restaurants.length} ռեստորան</FooterText>
+          <FooterText>{displayedRestaurants.length} ռեստորան</FooterText>
         </div>
         <Button variant="primary" onClick={() => openForm()}>
           Ավելացնել ռեստորան
