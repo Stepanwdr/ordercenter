@@ -139,10 +139,13 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
         <FieldGroup>
           <Label>Ռեստորան</Label>
           <Dropdown
-            value={restaurant}
+            value={restaurant?.name || ''}
             options={restaurantList?.data?.map((r: any) => ({ value: r.id, label: r.name })) ?? []}
             placeholder="Ընրել ռեստորանը"
-            onChange={(value) => setRestaurant(value)}
+            onChange={(value) => {
+              const retaurant = restaurantList?.data?.find((r: Restaurant) => r.name===value)  as Restaurant;
+              setRestaurant(retaurant)
+            }}
           />
         </FieldGroup>
         {restaurant && menusForRestaurant && menusForRestaurant?.length > 0 && (
