@@ -1,5 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../services/sequelize.js';
+import {courierStatuses} from "../utils/validators.js";
 
 class Courier extends Model {}
 
@@ -10,10 +11,18 @@ Courier.init(
       primaryKey: true,
       allowNull: false,
     },
-    status: {
-      type: DataTypes.ENUM('offline', 'available', 'busy'),
+    restaurantId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'restaurants',
+        key: 'id',
+      },
+    },
+  status: {
+      type: DataTypes.ENUM(courierStatuses),
       allowNull: false,
-      defaultValue: 'offline',
+      defaultValue: 'free',
     },
     lat: {
       type: DataTypes.DECIMAL(10, 7),

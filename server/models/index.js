@@ -19,6 +19,17 @@ Restaurant.belongsTo(User, {
   foreignKey: 'ownerId',
 });
 
+// Courier <-> Restaurant associations
+Restaurant.hasMany(Courier, {
+  as: 'couriers',
+  foreignKey: 'restaurantId',
+});
+
+Courier.belongsTo(Restaurant, {
+  as: 'restaurant',
+  foreignKey: 'restaurantId',
+});
+
 User.hasOne(Courier, {
   as: 'courierProfile',
   foreignKey: 'userId',
@@ -116,6 +127,9 @@ RestaurantAddress.belongsTo(Restaurant, {
   as: 'restaurant',
   foreignKey: 'restaurantId',
 });
+
+// (duplicate courier associations removed to avoid conflicts)
+
 
 export {
   sequelize,

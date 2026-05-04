@@ -28,5 +28,6 @@ router.use('/orders', orderRoutes);
 // New menu-related routes
 router.use('/restaurants/:restaurantId/menus', menusRoutes);
 router.use('/menus', menuItemsRoutes);
+router.use('/couriers', courierRoutes);
 
 export default router;

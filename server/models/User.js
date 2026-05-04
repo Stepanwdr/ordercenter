@@ -27,6 +27,14 @@ User.init(
       allowNull: false,
       defaultValue: 'customer',
     },
+    name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
   },
   {
     sequelize,
