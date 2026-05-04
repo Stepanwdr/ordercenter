@@ -6,6 +6,7 @@ import { useOrdersStore } from '@store/ordersStore';
 import type {OrderAddress, OrderItem} from "@entities/order/types.ts";
 import {Dropdown} from "@shared/ui/Dropdown.tsx";
 import { useRestaurantsQuery, useRestaurantMenusQuery, useMenuItemsQuery } from '@app/hooks/dataApi';
+import type {Restaurant} from "@shared/types";
 
 const restaurants = [];
 
@@ -85,7 +86,7 @@ const menuCategories = ['Drinks', 'Food', 'Meat'] as const;
 
 export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
   const [activeCategory, setActiveCategory] = useState<typeof menuCategories[number]>('Drinks');
-  const [restaurant, setRestaurant] = useState('');
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [selectedMenuId, setSelectedMenuId] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -117,17 +118,17 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleSubmit = async () => {
-    await createOrder({
-      orderCode: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
-      customerName,
-      phone,
-      restaurantId: restaurant,
-      totalAmount: cartTotal,
-      status: 'new',
-      createdAt: new Date().toISOString(),
-      orderItems: items,
-      address,
-    });
+    // await createOrder({
+    //   orderCode: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
+    //   customerName,
+    //   phone,
+    //   restaurantId: restaurant,
+    //   totalAmount: cartTotal,
+    //   status: 'new',
+    //   createdAt: new Date().toISOString(),
+    //   orderItems: items,
+    //   address,
+    // });
     onClose();
   };
 
@@ -139,7 +140,7 @@ export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
           <Label>Ռեստորան</Label>
           <Dropdown
             value={restaurant}
-            options={restaurantList?.map((r: any) => ({ value: r.id, label: r.name })) ?? []}
+            options={restaurantList?.data?.map((r: any) => ({ value: r.id, label: r.name })) ?? []}
             placeholder="Ընրել ռեստորանը"
             onChange={(value) => setRestaurant(value)}
           />
