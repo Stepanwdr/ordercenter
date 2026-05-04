@@ -6,7 +6,6 @@ import { CouriersPage } from '@pages/couriers/CouriersPage';
 import { CourierPage } from '@pages/couriers/CourierPage';
 import { RestaurantsPage } from '@pages/restaurants/RestaurantsPage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
-import { MenuAdminPage } from '@pages/admin/MenuAdminPage';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { RegisterPage } from '@pages/auth/RegisterPage';
 import { PrivateRoutes } from './routes/PrivateRoutes';

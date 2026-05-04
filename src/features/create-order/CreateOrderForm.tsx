@@ -85,146 +85,146 @@ const CartSummary = styled.div`
 const menuCategories = ['Drinks', 'Food', 'Meat'] as const;
 
 export const CreateOrderForm = ({ onClose }: { onClose: () => void }) => {
-  const [activeCategory, setActiveCategory] = useState<typeof menuCategories[number]>('Drinks');
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [selectedMenuId, setSelectedMenuId] = useState<string>('');
-  const [customerName, setCustomerName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState<OrderAddress>({ city: '', street: '', building: '', apartment: '', comment: '' });
-  const [items, setItems] = useState<OrderItem[]>([]);
-
-  const createOrder = useOrdersStore((state) => state.createOrder);
-  const loading = useOrdersStore((state) => state.loading);
-
-  // Load actual data from API if available
-  const { data: restaurantList } = useRestaurantsQuery();
-  const { data: menusForRestaurant } = useRestaurantMenusQuery(restaurant || null);
-  const { data: menuItemsForMenu } = useMenuItemsQuery(selectedMenuId || null);
-  const filteredMenu = useMemo(() => {
-    // Prefer menuItems from API if available, otherwise fallback to static menuOptions
-    return menuItemsForMenu?.length ? menuItemsForMenu : menuOptions;
-  }, [menuItemsForMenu]);
-
-  const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  const addItem = (menuItem: any) => {
-    setItems((prev) => {
-      const existing = prev.find((it) => it.id === menuItem.id);
-      if (existing) {
-        return prev.map((it) => (it.id === menuItem.id ? { ...it, quantity: it.quantity + 1 } : it));
-      }
-      return [...prev, { menuItemId: menuItem.id, name: menuItem.name, quantity: 1, price: menuItem.price }];
-    });
-  };
-
-  const handleSubmit = async () => {
-    // await createOrder({
-    //   orderCode: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
-    //   customerName,
-    //   phone,
-    //   restaurantId: restaurant,
-    //   totalAmount: cartTotal,
-    //   status: 'new',
-    //   createdAt: new Date().toISOString(),
-    //   orderItems: items,
-    //   address,
-    // });
-    onClose();
-  };
+  // const [activeCategory, setActiveCategory] = useState<typeof menuCategories[number]>('Drinks');
+  // const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  // const [selectedMenuId, setSelectedMenuId] = useState<string>('');
+  // const [customerName, setCustomerName] = useState('');
+  // const [phone, setPhone] = useState('');
+  // const [address, setAddress] = useState<OrderAddress>({ city: '', street: '', building: '', apartment: '', comment: '' });
+  // const [items, setItems] = useState<OrderItem[]>([]);
+  //
+  // const createOrder = useOrdersStore((state) => state.createOrder);
+  // const loading = useOrdersStore((state) => state.loading);
+  //
+  // // Load actual data from API if available
+  // const { data: restaurantList } = useRestaurantsQuery();
+  // const { data: menusForRestaurant } = useRestaurantMenusQuery(restaurant || null);
+  // const { data: menuItemsForMenu } = useMenuItemsQuery(selectedMenuId || null);
+  // const filteredMenu = useMemo(() => {
+  //   // Prefer menuItems from API if available, otherwise fallback to static menuOptions
+  //   return menuItemsForMenu?.length ? menuItemsForMenu : menuOptions;
+  // }, [menuItemsForMenu]);
+  //
+  // const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  //
+  // const addItem = (menuItem: any) => {
+  //   setItems((prev) => {
+  //     const existing = prev.find((it) => it.id === menuItem.id);
+  //     if (existing) {
+  //       return prev.map((it) => (it.id === menuItem.id ? { ...it, quantity: it.quantity + 1 } : it));
+  //     }
+  //     return [...prev, { menuItemId: menuItem.id, name: menuItem.name, quantity: 1, price: menuItem.price }];
+  //   });
+  // };
+  //
+  // const handleSubmit = async () => {
+  //   // await createOrder({
+  //   //   orderCode: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
+  //   //   customerName,
+  //   //   phone,
+  //   //   restaurantId: restaurant,
+  //   //   totalAmount: cartTotal,
+  //   //   status: 'new',
+  //   //   createdAt: new Date().toISOString(),
+  //   //   orderItems: items,
+  //   //   address,
+  //   // });
+  //   onClose();
+  // };
 
   return (
     <DrawerLayout>
-      <Panel>
-        <SectionTitle>Նոր պատվեր</SectionTitle>
-        <FieldGroup>
-          <Label>Ռեստորան</Label>
-          <Dropdown
-            value={restaurant?.name || ''}
-            options={restaurantList?.data?.map((r: any) => ({ value: r.id, label: r.name })) ?? []}
-            placeholder="Ընրել ռեստորանը"
-            onChange={(value) => {
-              const retaurant = restaurantList?.data?.find((r: Restaurant) => r.name===value)  as Restaurant;
-              setRestaurant(retaurant)
-            }}
-          />
-        </FieldGroup>
-        {restaurant && menusForRestaurant && menusForRestaurant?.length > 0 && (
-          <FieldGroup>
-            <Label>Մենյու</Label>
-            <Dropdown
-              value={selectedMenuId}
-              options={menusForRestaurant.map((m: any) => ({ value: m.id, label: m.name }))}
-              placeholder="Ընտրել меню"
-              onChange={(value) => setSelectedMenuId(value)}
-            />
-          </FieldGroup>
-        )}
+      {/*<Panel>*/}
+      {/*  <SectionTitle>Նոր պատվեր</SectionTitle>*/}
+      {/*  <FieldGroup>*/}
+      {/*    <Label>Ռեստորան</Label>*/}
+      {/*    <Dropdown*/}
+      {/*      value={restaurant?.name || ''}*/}
+      {/*      options={restaurantList?.data?.map((r: any) => ({ value: r.id, label: r.name })) ?? []}*/}
+      {/*      placeholder="Ընրել ռեստորանը"*/}
+      {/*      onChange={(value) => {*/}
+      {/*        const retaurant = restaurantList?.data?.find((r: Restaurant) => r.name===value)  as Restaurant;*/}
+      {/*        setRestaurant(retaurant)*/}
+      {/*      }}*/}
+      {/*    />*/}
+      {/*  </FieldGroup>*/}
+      {/*  {restaurant && menusForRestaurant && menusForRestaurant?.length > 0 && (*/}
+      {/*    <FieldGroup>*/}
+      {/*      <Label>Մենյու</Label>*/}
+      {/*      <Dropdown*/}
+      {/*        value={selectedMenuId}*/}
+      {/*        options={menusForRestaurant.map((m: any) => ({ value: m.id, label: m.name }))}*/}
+      {/*        placeholder="Ընտրել меню"*/}
+      {/*        onChange={(value) => setSelectedMenuId(value)}*/}
+      {/*      />*/}
+      {/*    </FieldGroup>*/}
+      {/*  )}*/}
 
-        <FieldGroup>
-          <Label>Պատվիրատու</Label>
-          <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Full name" />
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
-        </FieldGroup>
+      {/*  <FieldGroup>*/}
+      {/*    <Label>Պատվիրատու</Label>*/}
+      {/*    <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Full name" />*/}
+      {/*    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />*/}
+      {/*  </FieldGroup>*/}
 
-        <FieldGroup>
-          <Label>Հասցե</Label>
-          <Input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="City" />
-          <Input value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Street" />
-          <Input value={address.building} onChange={(e) => setAddress({ ...address, building: e.target.value })} placeholder="Building" />
-          <Input value={address.apartment} onChange={(e) => setAddress({ ...address, apartment: e.target.value })} placeholder="Apartment" />
-          <Input value={address.comment} onChange={(e) => setAddress({ ...address, comment: e.target.value })} placeholder="Comment" />
-        </FieldGroup>
+      {/*  <FieldGroup>*/}
+      {/*    <Label>Հասցե</Label>*/}
+      {/*    <Input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="City" />*/}
+      {/*    <Input value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Street" />*/}
+      {/*    <Input value={address.building} onChange={(e) => setAddress({ ...address, building: e.target.value })} placeholder="Building" />*/}
+      {/*    <Input value={address.apartment} onChange={(e) => setAddress({ ...address, apartment: e.target.value })} placeholder="Apartment" />*/}
+      {/*    <Input value={address.comment} onChange={(e) => setAddress({ ...address, comment: e.target.value })} placeholder="Comment" />*/}
+      {/*  </FieldGroup>*/}
 
-        <SectionTitle>Menu</SectionTitle>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-          {menuCategories.map((category) => (
-            <Toggle key={category} type="button" active={activeCategory === category} onClick={() => setActiveCategory(category)}>
-              {category}
-            </Toggle>
-          ))}
-        </div>
-        <MenuGrid>
-          {filteredMenu.map((item) => (
-            <MenuCard key={item.id}>
-              <div>
-                <strong>{item.name}</strong>
-                <p style={{ margin: '6px 0', color: 'rgba(255,255,255,0.7)' }}>{item.description}</p>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>${item.price.toFixed(2)}</span>
-                <Button type="button" onClick={() => addItem(item)}>Ավելացնել</Button>
-              </div>
-            </MenuCard>
-          ))}
-        </MenuGrid>
-      </Panel>
-      <CartPanel>
-        <SectionTitle>Պատվերի յամբուղ</SectionTitle>
-        <CartSummary>
-          {items.length === 0 ? (
-            <p>Ավելացնել :</p>
-          ) : (
-            items.map((item) => (
-              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <p style={{ margin: '6px 0', color: 'rgba(255,255,255,0.65)' }}>Qty {item.quantity}</p>
-                </div>
-                <span>${(item.price * item.quantity).toFixed(2)}</span>
-              </div>
-            ))
-          )}
-        </CartSummary>
-        <div style={{ marginTop: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span>Գումարը</span>
-            <strong>${cartTotal.toFixed(2)}</strong>
-          </div>
-          <Button onClick={handleSubmit} disabled={loading || items.length === 0 || !customerName || !phone}>
-            {loading ? 'Ստեղվանոր՛' : 'Ստեղծել պատվեր'}
-          </Button>
-        </div>
-      </CartPanel>
+      {/*  <SectionTitle>Menu</SectionTitle>*/}
+      {/*  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>*/}
+      {/*    {menuCategories.map((category) => (*/}
+      {/*      <Toggle key={category} type="button" active={activeCategory === category} onClick={() => setActiveCategory(category)}>*/}
+      {/*        {category}*/}
+      {/*      </Toggle>*/}
+      {/*    ))}*/}
+      {/*  </div>*/}
+      {/*  <MenuGrid>*/}
+      {/*    {filteredMenu.map((item) => (*/}
+      {/*      <MenuCard key={item.id}>*/}
+      {/*        <div>*/}
+      {/*          <strong>{item.name}</strong>*/}
+      {/*          <p style={{ margin: '6px 0', color: 'rgba(255,255,255,0.7)' }}>{item.description}</p>*/}
+      {/*        </div>*/}
+      {/*        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>*/}
+      {/*          <span>${item.price.toFixed(2)}</span>*/}
+      {/*          <Button type="button" onClick={() => addItem(item)}>Ավելացնել</Button>*/}
+      {/*        </div>*/}
+      {/*      </MenuCard>*/}
+      {/*    ))}*/}
+      {/*  </MenuGrid>*/}
+      {/*</Panel>*/}
+      {/*<CartPanel>*/}
+      {/*  <SectionTitle>Պատվերի յամբուղ</SectionTitle>*/}
+      {/*  <CartSummary>*/}
+      {/*    {items.length === 0 ? (*/}
+      {/*      <p>Ավելացնել :</p>*/}
+      {/*    ) : (*/}
+      {/*      items.map((item) => (*/}
+      {/*        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>*/}
+      {/*          <div>*/}
+      {/*            <strong>{item.name}</strong>*/}
+      {/*            <p style={{ margin: '6px 0', color: 'rgba(255,255,255,0.65)' }}>Qty {item.quantity}</p>*/}
+      {/*          </div>*/}
+      {/*          <span>${(item.price * item.quantity).toFixed(2)}</span>*/}
+      {/*        </div>*/}
+      {/*      ))*/}
+      {/*    )}*/}
+      {/*  </CartSummary>*/}
+      {/*  <div style={{ marginTop: 'auto' }}>*/}
+      {/*    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>*/}
+      {/*      <span>Գումարը</span>*/}
+      {/*      <strong>${cartTotal.toFixed(2)}</strong>*/}
+      {/*    </div>*/}
+      {/*    <Button onClick={handleSubmit} disabled={loading || items.length === 0 || !customerName || !phone}>*/}
+      {/*      {loading ? 'Ստեղվանոր՛' : 'Ստեղծել պատվեր'}*/}
+      {/*    </Button>*/}
+      {/*  </div>*/}
+      {/*</CartPanel>*/}
     </DrawerLayout>
   );
 };
