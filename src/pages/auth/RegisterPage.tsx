@@ -10,7 +10,7 @@ import { toast } from 'react-toastify';
 import {Dropdown} from "@shared/ui/Dropdown.tsx";
 import { useRegisterMutation } from '@app/hooks/authApi';
 
-export const RegisterPage = () => {
+ const RegisterPage = () => {
   const [role, setRole] = useState<UserRole>('operator');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -153,3 +153,5 @@ const rolesOption =[{
     </PageRoot>
   );
 };
+
+export default RegisterPage

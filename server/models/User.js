@@ -23,9 +23,9 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('admin', 'courier', 'customer', 'operator'),
+      type: DataTypes.ENUM('admin', 'courier', 'operator'),
       allowNull: false,
-      defaultValue: 'customer',
+      defaultValue: 'operator',
     },
     name: {
       type: DataTypes.STRING(255),

@@ -6,6 +6,7 @@ import Order from './Order.js';
 import RefreshToken from './RefreshToken.js';
 import Menu from './Menu.js';
 import MenuItem from './MenuItem.js';
+import Category from './Category.js';
 import OrderItem from './OrderItem.js';
 import RestaurantAddress from './RestaurantAddress.js';
 
@@ -40,14 +41,9 @@ Courier.belongsTo(User, {
   foreignKey: 'userId',
 });
 
-User.hasMany(Order, {
-  as: 'customerOrders',
-  foreignKey: 'customerId',
-});
-
 Order.belongsTo(User, {
-  as: 'customer',
-  foreignKey: 'customerId',
+  as: 'operator',
+  foreignKey: 'operatorId',
 });
 
 User.hasMany(Order, {
@@ -58,6 +54,13 @@ User.hasMany(Order, {
 Order.belongsTo(User, {
   as: 'courier',
   foreignKey: 'courierId',
+});
+
+// Allow including courier profile (from Courier table) by linking Order.courierId -> Courier.userId
+Order.belongsTo(Courier, {
+  as: 'courierProfile',
+  foreignKey: 'courierId',
+  targetKey: 'userId',
 });
 
 Restaurant.hasMany(Order, {
@@ -101,6 +104,16 @@ MenuItem.belongsTo(Menu, {
   foreignKey: 'menuId',
 });
 
+Category.hasMany(MenuItem, {
+  as: 'menuItems',
+  foreignKey: 'categoryId',
+});
+
+MenuItem.belongsTo(Category, {
+  as: 'category',
+  foreignKey: 'categoryId',
+});
+
 // Order items associations
 Order.hasMany(OrderItem, {
   as: 'orderItems',
@@ -140,6 +153,7 @@ export {
   RefreshToken,
   Menu,
   MenuItem,
+  Category,
   OrderItem,
   RestaurantAddress
 };

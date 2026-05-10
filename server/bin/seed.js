@@ -17,11 +17,10 @@ try {
 
   const password = await hashPassword('Password123');
 
-  const [admin, operator, courierUser, customer] = await Promise.all([
+  const [admin, operator, courierUser] = await Promise.all([
     User.unscoped().create({ email: 'admin@example.com', password, role: 'admin' }),
     User.unscoped().create({ email: 'operator@example.com', password, role: 'operator' }),
     User.unscoped().create({ email: 'courier@example.com', password, role: 'courier' }),
-    User.unscoped().create({ email: 'customer@example.com', password, role: 'customer' }),
   ]);
 
   await Courier.create({
@@ -41,7 +40,7 @@ try {
   await Order.create({
     status: 'pending',
     price: 18.5,
-    customerId: customer.id,
+    customerName: 'Sveta',
     restaurantId: restaurant.id,
   });
 

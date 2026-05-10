@@ -2,13 +2,24 @@ import { create } from 'zustand';
 import { ordersApi } from '@shared/api/orders';
 import type {Order, OrderStatus} from "@shared/types";
 
+export interface CreateOrderRequest extends Partial<Order> {
+  customerPhone:string,
+  deliveryAddress:string,
+  entrance:string,
+  floor:string,
+  domofon:string,
+  home:string,
+  addressComment:string,
+  customerName:string,
+}
+
 interface OrdersState {
   orders: Order[];
   loading: boolean;
   selectedOrder: Order | null;
   error?: string;
   fetchOrders: () => Promise<void>;
-  createOrder: (payload: Partial<Order>) => Promise<void>;
+  createOrder: (payload: CreateOrderRequest) => Promise<void>;
   updateOrder: (id: string, payload: Partial<Order>) => Promise<void>;
   sendOrder: (id: string) => Promise<void>;
   assignCourier: (id: string, courierId: string) => Promise<void>;
@@ -39,7 +50,11 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     set({ loading: true, error: undefined });
     try {
       const order = await ordersApi.createOrder(payload);
-      set((state) => ({ orders: [order, ...state.orders] }));
+      console.log(order);
+      if(order){
+        alert('Պատվերը ստեղծված է');
+      }
+
     } catch (error) {
       set({ error: (error as Error).message });
     } finally {

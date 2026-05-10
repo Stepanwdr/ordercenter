@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
 import { StatusBadge } from '@shared/ui/StatusBadge';
-import { findCourier } from './courierData';
+import { useCourierQuery } from '@app/hooks/dataApi';
+import type {Courier} from "@shared/types";
 
 const PageRoot = styled.main`
   padding: 32px;
@@ -85,12 +86,19 @@ const BackButton = styled(Button)`
   min-width: 160px;
 `;
 
-export const CourierPage = () => {
+ const CourierPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const courier = useMemo(() => findCourier(id), [id]);
+  const { data: courierApi, isPending } = useCourierQuery(id ?? null);
 
-  if (!courier) {
+  if (isPending) {
+    return <PageRoot>
+      <Title>Բեռնվում է</Title>
+    </PageRoot>
+  }
+
+
+  if (!courierApi?.data) {
     return (
       <PageRoot>
         <Title>Courier not found</Title>
@@ -98,50 +106,59 @@ export const CourierPage = () => {
     );
   }
 
+  const data = courierApi?.data ?? ({} as Courier);
+  const hasActiveOrder = data?.status === "free";
   // const statusLabel = courier.status === 'delivering' ? 'Առաքվում են' : courier.status === 'idle' ? 'Հանգստացածը' : 'Անցանց';
 
   return (
     <PageRoot>
       <Header>
         <TitleGroup>
-          <Title>{courier.name}</Title>
+          <Title>{data?.user?.name}</Title>
           <Subtitle>Полная карточка курьера с текущим статусом, контактами и последней информацией о доставке.</Subtitle>
         </TitleGroup>
         <div>
-          <StatusBadge status={courier.status} />
+          <StatusBadge status={data?.status} />
         </div>
       </Header>
 
       <InfoGrid>
         <InfoCard>
           <CardTitle>Контактный телефон</CardTitle>
-          <CardValue>{courier.phone}</CardValue>
+          <CardValue>{data?.user?.phone}</CardValue>
         </InfoCard>
+        {data?.restaurant?.name && (
+          <InfoCard>
+            <CardTitle>Ресторан</CardTitle>
+            <CardValue>{data?.restaurant?.name}</CardValue>
+          </InfoCard>
+        )}
         <InfoCard>
           <CardTitle>Текущий заказ</CardTitle>
-          <CardValue>{courier.currentOrder ?? 'Нет активного заказа'}</CardValue>
+          {/*<CardValue>{((data.currentOrders.map(o =>o.status))) ?? 'Нет активного заказа'}</CardValue>*/}
         </InfoCard>
         <InfoCard>
           <CardTitle>Расположение</CardTitle>
-          <CardValue>
-            {courier.location
-              ? `${courier.location.lat.toFixed(4)}, ${courier.location.lng.toFixed(4)}`
-              : 'Не доступно'}
-          </CardValue>
+          {/*<CardValue>*/}
+          {/*  {typeof courier?.lat === 'number' && typeof courier?.lng === 'number'*/}
+          {/*    ? `${Number(courier.lat).toFixed(4)}, ${Number(courier.lng).toFixed(4)}`*/}
+          {/*    : 'Не доступно'}*/}
+          {/*</CardValue>*/}
         </InfoCard>
       </InfoGrid>
 
-      <Section>
-        <SectionTitle>Детали</SectionTitle>
-        <SectionText>
-          {courier.currentOrder
+        <Section>
+          <SectionTitle>Детали</SectionTitle>
+          <SectionText>
+          {hasActiveOrder
             ? 'Курьер активно доставляет заказ. Поддерживайте связь через систему и отслеживайте время доставки.'
             : 'Курьер свободен и готов к новым заданиям. Вы можете изменить его статус или назначить новый заказ.'}
-        </SectionText>
+          </SectionText>
         <BackButton variant="secondary" onClick={() => navigate('/couriers')}>
-          Արյոե առաքիչների ցուցակը
+          Հետ առաքիչների ցուցակը
         </BackButton>
       </Section>
     </PageRoot>
   );
 };
+export default CourierPage

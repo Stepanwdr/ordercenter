@@ -1,5 +1,5 @@
 export type OrderStatus = 'new' | 'cooking' | 'ready' | 'delivering' | 'done';
-export type CourierStatus = 'atRestaurant' | 'pickedUp' | 'enRoute' | 'delivered';
+export type CourierStatus = 'atRestaurant' | 'pickedUp' | 'enRoute' | 'delivered' | 'free' | 'dayOff' | 'offline';
 
 export interface MenuItemOption {
   id: string;

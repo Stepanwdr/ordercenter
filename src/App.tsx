@@ -1,20 +1,21 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import styled from 'styled-components';
-import { DashboardPage } from '@pages/dashboard/DashboardPage';
-import { OrdersPage } from '@pages/orders/OrdersPage';
-import { CouriersPage } from '@pages/couriers/CouriersPage';
-import { CourierPage } from '@pages/couriers/CourierPage';
-import { RestaurantsPage } from '@pages/restaurants/RestaurantsPage';
-import { SettingsPage } from '@pages/settings/SettingsPage';
-import { LoginPage } from '@pages/auth/LoginPage';
-import { RegisterPage } from '@pages/auth/RegisterPage';
 import { PrivateRoutes } from './routes/PrivateRoutes';
 // import { ProfilePage } from '@pages/profile/ProfilePage';
 import { PublicRoutes } from './routes/PublicRoutes';
 import { initializeSocket } from '@shared/lib/socket';
 import { Sidebar } from '@shared/ui/Sidebar';
 import 'react-data-grid/lib/styles.css';
-
+import {lazy} from "react";
+const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
+const OrdersPage = lazy(() => import('@pages/orders/OrdersPage'));
+const CouriersPage = lazy(() => import('@pages/couriers/CouriersPage'));
+const CourierPage = lazy(() => import('@pages/couriers/CourierPage'));
+const RestaurantsPage = lazy(() => import('@pages/restaurants/RestaurantsPage'));
+const MenuManagementPage = lazy(() => import('@pages/menu-management/MenuManagementPage'));
+const SettingsPage = lazy(() => import('@pages/settings/SettingsPage'));
+const LoginPage = lazy(() => import('@pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('@pages/auth/RegisterPage'));
 
 const AppShell = styled.div`
   position: relative;
@@ -32,7 +33,7 @@ const Content = styled.main`
   max-width: 100%;
   overflow-x: auto;
   box-sizing: border-box;
-   padding-left: 120px;
+  padding-left: 120px;
   @media (max-width: 900px) {
     margin-left: 80px;
   }
@@ -73,6 +74,7 @@ export function App() {
           <Route path="/couriers" element={<CouriersPage />} />
           <Route path="/couriers/:id" element={<CourierPage />} />
           <Route path="/restaurants" element={<RestaurantsPage />} />
+          <Route path="/menu-management" element={<MenuManagementPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/*<Route path="/profile" element={<ProfilePage />} />*/}
           {/*<Route path="/admin/menu" element={<MenuAdminPage />} />*/}

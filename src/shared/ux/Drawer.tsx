@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Button } from "@shared/ui/Button";
 
-type DrawerPosition = 'bottom' | 'top';
+type DrawerPosition = 'bottom' | 'top' | 'left' | 'right';
 
 interface DrawerProps {
   open: boolean;
@@ -27,6 +27,50 @@ const Backdrop = styled.div<{ $visible: boolean }>`
   transition: opacity 220ms ease;
 `;
 
+const slideInLeft = keyframes`
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+`;
+
+const slideOutLeft = keyframes`
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+`;
+
+const slideInRight = keyframes`
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+`;
+
+const slideOutRight = keyframes`
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+`;
+
 const slideInBottom = keyframes`
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -47,31 +91,85 @@ const slideOutTop = keyframes`
   to { transform: translateY(-100%); opacity: 0; }
 `;
 
-const Panel = styled.div<{ position: DrawerPosition; $visible: boolean }>`
-  position: fixed;
-  left: 0;
-  right: 0;
-  ${({ position }) => (position === 'bottom' ? 'bottom: 0;' : 'top: 0;')}
-  animation: ${({ position, $visible }) =>
-    $visible
-      ? position === 'bottom'
-        ? slideInBottom
-        : slideInTop
-      : position === 'bottom'
-      ? slideOutBottom
-      : slideOutTop} 260ms ease forwards;
-  width: 100%;
-  max-height: 98vh;
-  height: 100%;
-    background:  rgba(18, 24, 44, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
-  border-radius: ${({ position }) => (position === 'bottom' ? '24px 24px 0 0' : '0 0 24px 24px')};
-  overflow: hidden;
+const Panel = styled.div<{
+  position: DrawerPosition;
+  $visible: boolean;
+}>`
+    position: fixed;
 
-  padding: 24px;
-  will-change: transform, opacity;
-  
+    ${({ position }) => {
+        switch (position) {
+            case 'bottom':
+                return `
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: 100%;
+          max-height: 98vh;
+          border-radius: 24px 24px 0 0;
+        `;
+
+            case 'top':
+                return `
+          left: 0;
+          right: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          max-height: 98vh;
+          border-radius: 0 0 24px 24px;
+        `;
+
+            case 'left':
+                return `
+          top: 0;
+          bottom: 0;
+          left: 0;
+          width: 420px;
+          max-width: 100%;
+          height: 100%;
+          border-radius: 0 24px 24px 0;
+        `;
+
+            case 'right':
+                return `
+          top: 0;
+          bottom: 0;
+          right: 0;
+          width: 420px;
+          max-width: 100%;
+          height: 100%;
+          border-radius: 24px 0 0 24px;
+        `;
+            default:
+                return '';
+        }
+    }}
+    animation: ${({ position, $visible }) => {
+        if (position === 'bottom') {
+            return $visible ? slideInBottom : slideOutBottom;
+        }
+
+        if (position === 'top') {
+            return $visible ? slideInTop : slideOutTop;
+        }
+
+        if (position === 'left') {
+            return $visible ? slideInLeft : slideOutLeft;
+        }
+
+        return $visible ? slideInRight : slideOutRight;
+    }} 260ms ease forwards;
+
+    background: rgba(18, 24, 44, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+
+    overflow: hidden;
+    padding: 24px;
+
+    will-change: transform, opacity;
 `;
 
 const Header = styled.div`

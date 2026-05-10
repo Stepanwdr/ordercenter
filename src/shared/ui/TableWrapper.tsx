@@ -2,7 +2,7 @@ import styled from 'styled-components';
 
 export const TableWrapper = styled.div`
   width: 100%;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.03);

@@ -10,6 +10,4 @@ export interface User {
   role?: UserRole;
   avatar?: string;
   phone?: string;
-  restaurant?: Restaurant[];
-  orders?: Order[];
 }

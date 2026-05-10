@@ -13,6 +13,7 @@ const collapse = keyframes`
   to { width: 80px; }
 `;
 
+
 const SidebarRoot = styled.aside<{ open: boolean }>`
   position: absolute;
   top: 20px;
@@ -33,6 +34,9 @@ const SidebarRoot = styled.aside<{ open: boolean }>`
   overflow: hidden;
   transition: width 220ms ease;
   animation: ${({ open }) => (open ? css`${expand} 220ms ease forwards` : css`${collapse} 220ms ease forwards`)};
+
+  @media (max-width: 720px) {
+      display: ${({ open }) => (open ? 'flex' : 'none')};
 `;
 
 const Brand = styled.div<{ open: boolean }>`
@@ -143,7 +147,49 @@ const settingsItems = [
       </svg>
     ),
   },
+  {
+    to: '/menu-management',
+    label: 'Menu Management',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+        <path d="M4 5h16v2H4V5Zm0 4h16v2H4V9Zm0 4h10v2H4v-2Zm0 4h10v2H4v-2Zm12-4h4v6h-4v-6Z" />
+      </svg>
+    ),
+  },
 ];
+
+const BurgerButton = styled.button`
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(0,0,0,.65);
+  color: white;
+  padding: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  display: none;
+  @media (max-width: 860px) {
+    display: inline-flex;
+    flex-direction: column;
+    padding: 8px;
+  }
+`;
+
+const BurgerBar = styled.span`
+  width: 22px;
+  height: 2px;
+  background: #fff;
+  display: block;
+  margin: 4px 0;
+  border-radius: 2px;
+`;
 
 const menuItems = [
   {
@@ -186,6 +232,13 @@ const menuItems = [
 
 export const Sidebar = () => {
   const [open, setOpen] = useState(false);
+  const toggleMobileSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 860) {
+      setOpen((prev) => !prev);
+    } else {
+      setOpen(true);
+    }
+  };
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -195,11 +248,15 @@ export const Sidebar = () => {
   };
 
   return (
-    <SidebarRoot
-      open={open}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <>
+      <BurgerButton aria-label="Toggle menu" onClick={toggleMobileSidebar} title="Menu">
+        <BurgerBar /><BurgerBar /><BurgerBar />
+      </BurgerButton>
+      <SidebarRoot
+        open={open}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
       <Brand open={open}>
         <BrandTitle>DeliveryDep</BrandTitle>
       </Brand>
@@ -244,5 +301,6 @@ export const Sidebar = () => {
         </NavList>
       </Footer>
     </SidebarRoot>
+      </>
   );
 };

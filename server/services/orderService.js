@@ -1,13 +1,23 @@
 import { Courier, Order, Restaurant, User, OrderItem, MenuItem, Menu, sequelize } from '../models/index.js';
 import AppError from '../utils/AppError.js';
 import { canTransitionOrderStatus } from '../utils/orderFlow.js';
+const generateCode=()=>{
+  const now = new Date();
 
+  const pad = (n) => n.toString().padStart(2, '0');
+
+  const code = `ORD_${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}${pad(now.getHours())}${pad(now.getMinutes())}`;
+
+  return code;
+}
 class OrderService {
   static async listOrders() {
     return Order.findAll({
       include: [
-        { model: User, as: 'customer' },
         { model: User, as: 'courier' },
+        // include courier profile from Courier table (with linked User)
+        { model: Courier, as: 'courierProfile', include: [{ model: User, as: 'user' }] },
+        { model: User, as: 'operator' },
         {
           model: Restaurant,
           as: 'restaurant',
@@ -43,13 +53,13 @@ class OrderService {
 
   static async createOrder(payload, authUser) {
     return sequelize.transaction(async (transaction) => {
-      const customerId =  authUser.userId;
-      const [customer, restaurant] = await Promise.all([
-        User.findByPk(customerId, { transaction }),
+      const operatorId =  authUser.userId;
+      const [operator, restaurant] = await Promise.all([
+        User.findByPk(operatorId, { transaction }),
         Restaurant.findByPk(payload.restaurantId, { transaction }),
       ]);
 
-      if (!customer) {
+      if (!operator) {
         throw new AppError(404, 'Customer not found');
       }
 
@@ -84,13 +94,26 @@ class OrderService {
         {
           status: 'pending',
           price: totalPrice,
-          customerId,
+          operatorId,
           restaurantId: payload.restaurantId,
+          courierId: payload.courierId ?? null,
+          customerPhone: payload.customerPhone ?? null,
+          deliveryAddress: payload.deliveryAddress ?? null,
+          entrance: payload.entrance ?? null,
+          floor: payload.floor ?? null,
+          domofon: payload.domofon ?? null,
+          home: payload.home ?? null,
+          addressComment: payload.addressComment ?? null,
+          customerName: payload.customerName ?? null,
+          orderType: payload.orderType ?? null,
+          code: generateCode(),
+          prepTime: payload.prepTime ?? null,
         },
         { transaction }
       );
 
       // Attach order items if provided
+      console.log(payload.orderItems,'payload.orderItems')
       if (Array.isArray(payload.orderItems) && payload.orderItems.length) {
         const itemsToCreate = payload.orderItems
           .filter((i) => !!i.menuItemId)

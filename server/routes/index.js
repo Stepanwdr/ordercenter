@@ -6,6 +6,7 @@ import orderRoutes from './orders.js';
 import courierRoutes from './courier.js';
 import menusRoutes from './menus.js';
 import menuItemsRoutes from './menuItems.js';
+import categoriesRoutes from './categories.js';
 
 const router = express.Router();
 
@@ -27,7 +28,9 @@ router.use('/restaurants', restaurantRoutes);
 router.use('/orders', orderRoutes);
 // New menu-related routes
 router.use('/restaurants/:restaurantId/menus', menusRoutes);
+router.use('/menus', menusRoutes);
 router.use('/menus', menuItemsRoutes);
+router.use('/categories', categoriesRoutes);
 router.use('/couriers', courierRoutes);
 
 export default router;

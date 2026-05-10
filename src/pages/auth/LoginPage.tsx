@@ -6,7 +6,7 @@ import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLink, Title } from './authStyles';
 
-export const LoginPage = () => {
+ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -73,3 +73,4 @@ export const LoginPage = () => {
     </PageRoot>
   );
 };
+export default LoginPage

@@ -3,7 +3,8 @@ import MenuItemService from '../services/menuItemService.js';
 class MenuItemsController {
   static list = async (req, res) => {
     const { menuId } = req.params;
-    const items = await MenuItemService.list(menuId);
+    const search = typeof req.query.search === 'string' ? req.query.search : '';
+    const items = await MenuItemService.list(menuId, search);
     res.json({ success: true, data: items });
   };
 

@@ -7,6 +7,6 @@ import { schemas } from '../utils/validators.js';
 const router = express.Router({ mergeParams: true });
 
 router.get('/:menuId/items', asyncHandler(MenuItemsController.list));
-router.post('/:menuId/items', asyncHandler(MenuItemsController.create));
+router.post('/:menuId/items', validate(schemas.createMenuItem), asyncHandler(MenuItemsController.create));
 
 export default router;

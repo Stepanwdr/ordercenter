@@ -53,7 +53,7 @@ const CardText = styled.p`
   line-height: 1.8;
 `;
 
-export const SettingsPage = () => (
+ const SettingsPage = () => (
   <PageRoot>
     <Header>
       <Title>Настройки</Title>
@@ -80,3 +80,5 @@ export const SettingsPage = () => (
     </Cards>
   </PageRoot>
 );
+
+export default SettingsPage;

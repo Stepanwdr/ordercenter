@@ -32,7 +32,7 @@ const Subtitle = styled.p`
   color: rgba(255, 255, 255, 0.7);
 `;
 
-export const DashboardPage = () => {
+ const DashboardPage = () => {
   return (
     <div>
       <Title>Dispatch overview</Title>
@@ -54,3 +54,5 @@ export const DashboardPage = () => {
     </div>
   );
 };
+
+ export default DashboardPage;

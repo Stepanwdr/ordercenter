@@ -29,16 +29,17 @@ const Overlay = styled.div`
   z-index: 2000;
 `;
 
-const Menu = styled.div<{ top: number; left: number; width: number }>`
+const Menu = styled.div<{ top: number; left: number; width: number; maxHeight: number }>`
   position: absolute;
   top: ${({ top }) => top}px;
   left: ${({ left }) => left}px;
   width: ${({ width }) => width}px;
+  max-height: ${({ maxHeight }) => maxHeight}px;
   background: rgb(17, 19, 24);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
   box-shadow: 0 28px 40px rgba(55, 55, 55, 0.1);
-  overflow: hidden;
+  overflow: auto;
   animation: ${fadeIn} 180ms ease;
 `;
 
@@ -121,7 +122,7 @@ export const Dropdown = ({
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 320 });
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value),
@@ -135,7 +136,19 @@ export const Dropdown = ({
     if (!node) return;
 
     const rect = node.getBoundingClientRect();
-    setPosition({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    const estimatedMenuHeight = Math.min(options.length * 46, 320);
+    const viewportHeight = window.innerHeight;
+    const gap = 8;
+    const spaceBelow = viewportHeight - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+    const shouldOpenUp = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+
+    const maxHeight = Math.max(160, shouldOpenUp ? spaceAbove : spaceBelow);
+    const top = shouldOpenUp
+      ? Math.max(gap, rect.top - gap - Math.min(estimatedMenuHeight, maxHeight))
+      : rect.bottom + gap;
+
+    setPosition({ top, left: rect.left, width: rect.width, maxHeight });
 
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -164,7 +177,7 @@ export const Dropdown = ({
       {open &&
         createPortal(
           <Overlay>
-            <Menu ref={menuRef} top={position.top} left={position.left} width={position.width}>
+            <Menu ref={menuRef} top={position.top} left={position.left} width={position.width} maxHeight={position.maxHeight}>
               {options.map((option) => (
                 <Item
                   key={option.value}

@@ -19,7 +19,7 @@ export const ordersApi = {
     return response.data;
   },
   assignCourier: async (id: string, courierId: string): Promise<Order> => {
-    const response = await api.post<Order>(`/orders/${id}/assign`, { courierId });
+    const response = await api.patch<Order>(`/orders/${id}/assign-courier`, { courierId });
     return response.data;
   },
 };

@@ -111,6 +111,8 @@ const AddressRow = styled.div`
   gap: 10px;
   grid-template-columns: 1fr auto;
   align-items: center;
+  margin-bottom:10px ;
+    
 `;
 
 const FooterText = styled.p`
@@ -127,16 +129,21 @@ const Wrapper=styled.div`
     gap: 20px;
 `
 const Image = styled.div`
-      min-width: 150px;
-      min-height: 150px;
-      overflow: hidden;
-    border-radius: 24px;
-    img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+   min-width: 150px;
+   min-height: 150px;
+   overflow: hidden;
+   border-radius: 24px;
+   img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
 }
 `
+const Тabs = styled.div`
+ display: flex;
+ gap: 1rem;
+ margin-bottom: 10px;
+ `
 
 const initialFormState = {
   id: '',
@@ -147,7 +154,12 @@ const initialFormState = {
   status: 'open' as Restaurant['status'],
 };
 
-export const RestaurantsPage = () => {
+const tabs=[
+  {label:"Հիմնական տվյալներ",value:"details"},
+  // {label:"Մենյու",value:"menu"},
+]
+
+ const RestaurantsPage = () => {
   const [name, setName] = useState('');
   const [lat, setLat] = useState('0');
   const [lng, setLng] = useState('0');
@@ -158,7 +170,7 @@ export const RestaurantsPage = () => {
   const [building, setBuilding] = useState('');
   const [apartment, setApartment] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-
+  const [selectedTab,setSelectedTab] = useState(tabs[0].value);
   const { data: apiRestaurants } = useRestaurantsQuery();
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [formState, setFormState] = useState(initialFormState);
@@ -230,7 +242,6 @@ export const RestaurantsPage = () => {
     deleteRestaurantMutation.mutate(id);
   };
 
-
   const displayedRestaurants = apiRestaurants?.data || []
   return (
     <PageRoot>
@@ -270,8 +281,9 @@ export const RestaurantsPage = () => {
                     {typeof address === 'string'
                       ? address
                       : [address.address]
-                          .filter(Boolean)
-                          .join(', ')}
+                        .filter(Boolean)
+                        .join(', ')
+                      }
                   </AddressItem>
                 ))}
               </AddressList>
@@ -281,7 +293,7 @@ export const RestaurantsPage = () => {
               <Button variant="secondary" onClick={() => openForm(restaurant)}>
                 Խմբագրել
               </Button>
-              <Button variant="ghost" onClick={() => handleDeleteRestaurant(restaurant.id)}>
+              <Button variant="secondary" onClick={() => handleDeleteRestaurant(restaurant.id)}>
                 Ջնջել
               </Button>
             </Actions>
@@ -289,14 +301,25 @@ export const RestaurantsPage = () => {
         ))}
       </Grid>
 
-      <Drawer open={isDrawerOpen} title={`${mode === 'Create' ? 'Ստեղծել' : 'Խմբագրել'} ռեստորան`} onClose={closeForm} position="bottom">
+      <Drawer open={isDrawerOpen} title={`${mode === 'Create' ? 'Ստեղծել' : 'Խմբագրել'} ռեստորանը`} onClose={closeForm} position="bottom">
+
         <form onSubmit={saveRestaurant}>
           <Wrapper>
+            <Тabs>
+              {tabs.map(tab =>
+                <Button type={'button'} variant={tab.value === selectedTab ? 'ghost' : 'secondary'}
+                        onClick={() => setSelectedTab(tab.value)}>
+                  {tab.label}
+                </Button>
+              )}
+            </Тabs>
+          </Wrapper>
+          {selectedTab === 'details' && <Wrapper>
             <Field>
               Անուն
               <Input
                 value={formState.name}
-                onChange={(event) => setFormState({ ...formState, name: event.target.value })}
+                onChange={(event) => setFormState({...formState, name: event.target.value})}
                 placeholder="Ռեստորանի անուն"
               />
             </Field>
@@ -304,7 +327,7 @@ export const RestaurantsPage = () => {
               Հեռախոսահամար
               <Input
                 value={formState.phone}
-                onChange={(event) => setFormState({ ...formState, phone: event.target.value })}
+                onChange={(event) => setFormState({...formState, phone: event.target.value})}
                 placeholder="+374 98 888 888"
               />
             </Field>
@@ -325,7 +348,7 @@ export const RestaurantsPage = () => {
                       onChange={(event) => {
                         const nextAddresses = [...formState.addresses];
                         nextAddresses[addressIndex].address = event.target.value;
-                        setFormState({ ...formState, addresses: nextAddresses });
+                        setFormState({...formState, addresses: nextAddresses});
                       }}
                       placeholder="Քաղաք,թաղամաս,շենք"
                     />
@@ -335,7 +358,7 @@ export const RestaurantsPage = () => {
                       onClick={() => {
                         setFormState((current) => {
                           const nextAddresses = current.addresses.filter((_, index) => index !== addressIndex);
-                          return { ...current, addresses: nextAddresses };
+                          return {...current, addresses: nextAddresses};
                         });
                       }}
                     >
@@ -347,23 +370,26 @@ export const RestaurantsPage = () => {
               <Button
                 variant="secondary"
                 type="button"
-                onClick={() => setFormState((current) => ({ ...current, addresses: [...current.addresses,{address:""}] }))}
+                onClick={() => setFormState((current) => ({
+                  ...current,
+                  addresses: [...current.addresses, {address: ""}]
+                }))}
               >
-                Add address
+                Ավելացնել այլ հասցեում
               </Button>
             </Field>
 
-              <Actions>
-                <Button type="submit">Պահել</Button>
-                <Button variant="secondary" type="button" onClick={closeForm}>
-                  Չեղարկել
-                </Button>
-              </Actions>
-          </Wrapper>
-
+            <Actions>
+              <Button type="submit">Պահել</Button>
+              <Button variant="secondary" type="button" onClick={closeForm}>
+                Չեղարկել
+              </Button>
+            </Actions>
+          </Wrapper>}
         </form>
       </Drawer>
-      {/* Inline delete button for each restaurant */}
     </PageRoot>
   );
 };
+
+ export default RestaurantsPage

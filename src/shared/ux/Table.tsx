@@ -128,6 +128,7 @@ export const Table = <R extends object = Row>({
         rows={renderedRows}
         onColumnsReorder={handleColumnsReorder}
         onColumnResize={handleColumnResize}
+        className={'data-grid'}
       />
     </GridWrapper>
   );
