@@ -9,7 +9,6 @@ import path from 'path';
 import uploadRouter from './routes/upload.js';
 import authorization from './middlewares/authorization.js';
 import errorHandler from './middlewares/errorHandler.js';
-import notFound from './middlewares/notFound.js';
 
 dotenv.config();
 
