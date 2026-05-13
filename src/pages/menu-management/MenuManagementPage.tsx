@@ -273,7 +273,6 @@ const MenuManagementPage = () => {
           <Button type="button" variant="ghost" onClick={onDeleteMenu} disabled={!menuId || deleteMenu.isPending}>Ջնջել</Button>
         </Actions>
       </Card>
-
       <Shell>
         <Card as="form" onSubmit={onSaveItem}>
           <CardTitle>Խմբագրել ապրանքը</CardTitle>
@@ -292,13 +291,8 @@ const MenuManagementPage = () => {
             Նկարագրություն
             <TextArea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Product description..." />
           </Label>
-
           <CardTitle>Գույքագրում և գնագոյացում</CardTitle>
           <Grid2>
-            <Label>
-              Քանակ
-              <Input type="number" min={1} value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-            </Label>
             <Label>
               Գին
               <Input type="number" min={0} step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} />

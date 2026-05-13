@@ -34,7 +34,7 @@ import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLi
     <PageRoot>
       <Panel>
         <Header>
-          <Title>Sign in to OrderCenter</Title>
+          <Title>Sign in to DeliveryDepartment</Title>
           <Description>Use your account credentials to access orders, couriers, restaurants, and settings.</Description>
         </Header>
 

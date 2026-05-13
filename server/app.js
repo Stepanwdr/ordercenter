@@ -14,7 +14,7 @@ dotenv.config();
 
 const app = express();
 
-const corsOrigins = (process.env.CORS_ORIGINS || 'https://dev.deliverydepartment.am')
+const corsOrigins = (process.env.CORS_ORIGINS || 'https://api.deliverydepartment.am/api')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
