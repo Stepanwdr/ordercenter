@@ -1,10 +1,10 @@
 import authenticate from './authenticate.js';
 
 const PUBLIC_ROUTES = new Set([
-  'POST:/auth/register',
-  'POST:/auth/login',
-  'POST:/auth/refresh',
-  'GET:/',
+  'POST:api/auth/register',
+  'POST:api/auth/login',
+  'POST:api/auth/refresh',
+  'GET:api/',
 ]);
 
 export default function authorization(req, res, next) {
