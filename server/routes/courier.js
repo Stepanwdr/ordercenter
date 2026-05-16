@@ -12,5 +12,6 @@ router.get('/:id', asyncHandler(CouriersController.get));
 router.post('/', authorizeRole('admin', 'operator'), validate(schemas.createCourier), asyncHandler(CouriersController.create));
 router.put('/:id', authorizeRole('admin', 'operator'), validate(schemas.updateCourier), asyncHandler(CouriersController.update));
 router.delete('/:id', authorizeRole('admin'), asyncHandler(CouriersController.delete));
+router.post('/:id/generate-telegram-link', authorizeRole('admin','operator'), asyncHandler(CouriersController.generateTelegramLink));
 
 export default router;

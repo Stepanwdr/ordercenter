@@ -18,4 +18,7 @@ router.put('/:id', authorizeRole('admin', 'operator'), validate(schemas.updateCo
 // Delete
 router.delete('/:id', authorizeRole('admin'), asyncHandler(CouriersController.delete));
 
+// generate one-time token/link for telegram binding
+router.post('/:id/generate-telegram-link', authorizeRole('admin', 'operator'), asyncHandler(CouriersController.generateTelegramLink));
+
 export default router;

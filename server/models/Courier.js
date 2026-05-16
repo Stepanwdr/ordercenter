@@ -19,6 +19,18 @@ Courier.init(
         key: 'id',
       },
     },
+    telegramId: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    },
+    telegram_link_token: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    },
+    telegram_link_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   status: {
       type: DataTypes.ENUM(courierStatuses),
       allowNull: false,

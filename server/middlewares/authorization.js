@@ -9,11 +9,12 @@ const PUBLIC_ROUTES = new Set([
 
 export default function authorization(req, res, next) {
   const routeKey = `${req.method.toUpperCase()}:${req.path}`;
-  console.log({routeKey})
+
   if (PUBLIC_ROUTES.has(routeKey)) {
+    console.log('PUBLIC_ROUTES:', routeKey);
     next();
     return;
   }
-
+  console.log('axxed:', routeKey);
   authenticate(req, res, next);
 }

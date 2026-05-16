@@ -6,16 +6,19 @@ Model.createOrUpdate = async function (
     where: {},
   },
 ) {
-  const rows = await this.findOrCreate(options);
+  // Normalize inputs
+  const { defaults = {}, where = {}, ...rest } = options || {};
 
-  if (rows && rows.length) {
-    const { defaults, ...opt } = options;
+  // findOrCreate returns [instance, created]
+  const [instance, created] = await this.findOrCreate({ where, defaults, ...rest });
 
-    opt.returning = true;
+  // If a new instance was created, return it
+  if (created) return instance;
 
-    const res = await this.update(defaults, opt);
+  // Otherwise update the existing instance with provided defaults (fields to set)
+  // Use the same options (transaction, etc.) passed in rest where applicable
+  await instance.update(defaults, { ...rest });
 
-    return res[1];
-  }
-  return rows;
+  // Reload to ensure all associations/fields are fresh
+  return instance.reload();
 };

@@ -1,6 +1,8 @@
 import { Courier, Order, Restaurant, User, OrderItem, MenuItem, Menu, sequelize } from '../models/index.js';
+import telegramService from './telegramService.js';
 import AppError from '../utils/AppError.js';
 import { canTransitionOrderStatus } from '../utils/orderFlow.js';
+import { getIo } from './socket.js';
 const generateCode=()=>{
   const now = new Date();
 
@@ -128,11 +130,35 @@ class OrderService {
         }
       }
 
+      // After order created, notify courier via telegram if courier selected and has telegramId
+      try {
+        if (order.courierId) {
+          const courierProfile = await Courier.findByPk(order.courierId);
+          if (courierProfile && courierProfile.telegramId) {
+            const message = `Նոր պատվեր: \n#${order.code}\nԱնուն: ${order.customerName || '—'}\nՀեռախոս: ${order.customerPhone || '—'}\nՄասնագիտություն: ${order.orderType || '—'}\nՀասցե: ${order.deliveryAddress || '—'}\nԳումար: ${order.price}`;
+            await telegramService.sendMessage(courierProfile.telegramId, message);
+            // emit socket event for admin clients
+            try {
+              const io = getIo();
+              if (io) io.emit('courier:order_created', { orderId: order.id, courierId: courierProfile.userId, telegramId: courierProfile.telegramId });
+            } catch (e) {
+              // ignore
+            }
+          }
+        }
+      } catch (err) {
+        // don't block order creation if telegram fails
+        // eslint-disable-next-line no-console
+        console.error('Telegram notification failed', err?.message || err);
+      }
+
       return order;
     });
   }
 
   static async assignCourier(orderId, courierId) {
+    console.log({orderId,
+      courierId})
     return sequelize.transaction(async (transaction) => {
       const [order, courierProfile, courierUser] = await Promise.all([
         Order.findByPk(orderId, { transaction }),
@@ -159,6 +185,26 @@ class OrderService {
         order.save({ transaction }),
         courierProfile.save({ transaction }),
       ]);
+      console.log(order);
+      // Notify courier via telegram about assignment
+      try {
+        if (courierProfile && courierProfile.telegramId) {
+          const message = `Ստացել եք նոր պատվեր: \n#${order.code}\nՏվյալներ:\nՊատվիրատու: ${order.customerName || '—'}\nՀեռախոս: ${order.customerPhone || '—'}\nՀասցե: ${order.deliveryAddress || '—'}\nԳումար: ${order.price}`;
+          await telegramService.sendMessage(courierProfile.telegramId, message);
+        }
+      } catch (err) {
+        // ignore telegram failure
+        // eslint-disable-next-line no-console
+        console.error('Telegram notify on assign failed', err?.message || err);
+      }
+
+      // emit socket event about assignment
+      try {
+        const io = getIo();
+        if (io) io.emit('order:courier_assigned', { orderId: order.id, courierId: courierProfile.userId });
+      } catch (e) {
+        // ignore
+      }
 
       return order;
     });

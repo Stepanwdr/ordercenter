@@ -22,7 +22,6 @@ class RestaurantsController {
     // If photo uploaded via multipart, map to absolute URL path for client access
     if (req.file) {
       const host = `${req.protocol}://${req.get('host')}`;
-      console.log(req.file)
       payload.photo = `${host}/uploads/${req.file.filename}.png`;
       payload.lat = Number(req.lat);
       payload.lng = Number(req.lng);

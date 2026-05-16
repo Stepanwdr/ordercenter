@@ -2,8 +2,9 @@ import { z } from 'zod';
 
 const roleSchema = z.enum(['admin', 'courier', 'customer', 'operator']);
 const orderStatusSchema = z.enum(['pending', 'accepted', 'cooking', 'ready', 'delivering', 'completed']);
-const courierStatusSchema = z.enum(['offline', 'available', 'busy']);
-export const courierStatuses= ['atRestaurant','pickedUp','enRoute','delivered','free','dayOff','offline']
+export const courierStatuses= ['atRestaurant','pickedUp','enRoute','delivered','free','dayOff','offline','busy']
+const courierStatusSchema = z.enum(courierStatuses);
+
 export const OrderPaymentMethod = ['CASH' , 'ONLINE' , 'BANK POS' , 'IDRAM'];
 export const OrderStatus = ['pending','accepted','cooking','ready','picked_up','delivering','completed','cancelled'];
 
@@ -146,7 +147,8 @@ export const schemas = {
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
     email: z.string().email(),
-    restaurantId: z.string().uuid()
+    restaurantId: z.string().uuid(),
+    telegramId: z.string().optional(),
   }),
   updateCourier: z.object({
     name: z.string().min(1).optional(),
@@ -155,7 +157,8 @@ export const schemas = {
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
     email: z.string().email(),
-    restaurantId: z.string().uuid()
+    restaurantId: z.string().uuid(),
+    telegramId: z.string().optional(),
   }),
 };
 

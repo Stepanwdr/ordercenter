@@ -17,18 +17,19 @@ class CategoryService {
 
   static async create(payload) {
     const slug = payload.slug ? toSlug(payload.slug) : toSlug(payload.name);
-    const exists = await Category.findOne({
+
+    // Use createOrUpdate to avoid duplicate index issues and make operation idempotent
+    const category = await Category.createOrUpdate({
       where: { slug },
+      defaults: { name: payload.name.trim(), slug },
     });
 
-    if (exists) {
-      throw new AppError(409, 'Category with this slug already exists');
+    // If instance exists but slug matched, we should ensure name is up-to-date
+    if (category && category.name !== payload.name.trim()) {
+      await category.update({ name: payload.name.trim() });
     }
 
-    return Category.create({
-      name: payload.name.trim(),
-      slug,
-    });
+    return category;
   }
 }
 

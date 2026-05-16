@@ -11,7 +11,7 @@ User.init(
       primaryKey: true,
     },
     email: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(64),
       allowNull: false,
       unique: true,
       validate: {
@@ -23,7 +23,7 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('admin', 'courier', 'operator'),
+      type: DataTypes.ENUM('admin', 'courier', 'customer', 'operator','dispatcher'),
       allowNull: false,
       defaultValue: 'operator',
     },
@@ -41,7 +41,6 @@ User.init(
     modelName: 'User',
     tableName: 'users',
     indexes: [
-      { unique: true, fields: ['email'] },
       { fields: ['role'] },
     ],
     defaultScope: {

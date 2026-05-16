@@ -25,6 +25,11 @@ class CouriersController {
     await CourierService.deleteCourier(req.params.id, req.auth);
     res.status(204).send();
   };
+
+  static generateTelegramLink = async (req, res) => {
+    const result = await CourierService.generateTelegramLink(req.params.id, req.auth);
+    res.json({ success: true, data: result });
+  };
 }
 
 export default CouriersController;

@@ -11,10 +11,7 @@
     "dev": "nodemon -r dotenv/config ./bin/www.js",
     "start:prod": "node ./bin/www.js",
     "migrate": "node -r dotenv/config ./bin/migrate.js",
-    "migrate:addresses": "node ./bin/migrateRestaurantAddresses.js",
-    "rm:restaurant-address": "node ./bin/dropRestaurantAddressColumn.js",
-    "seed": "node -r dotenv/config ./bin/seed.js",
-    "migrate:menus": "node ./bin/migrateMenu.js"
+    "seed": "node -r dotenv/config ./bin/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
@@ -41,6 +38,7 @@
     "multer": "^2.1.1",
     "mysql2": "^3.14.1",
     "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.67.0",
     "pg": "^8.16.3",
     "pino": "^9.1.0",
     "pino-http": "^10.3.0",

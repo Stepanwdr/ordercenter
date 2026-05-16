@@ -4,6 +4,7 @@ import userRoutes from './users.js';
 import restaurantRoutes from './restaurants.js';
 import orderRoutes from './orders.js';
 import courierRoutes from './courier.js';
+import telegramRoutes from './telegram.js';
 import menusRoutes from './menus.js';
 import menuItemsRoutes from './menuItems.js';
 import categoriesRoutes from './categories.js';
@@ -32,5 +33,6 @@ router.use('/menus', menusRoutes);
 router.use('/menus', menuItemsRoutes);
 router.use('/categories', categoriesRoutes);
 router.use('/couriers', courierRoutes);
+router.use('/telegram', telegramRoutes);
 
 export default router;

@@ -1,5 +1,6 @@
 import { User, Courier, Restaurant } from '../models/index.js';
 import AppError from '../utils/AppError.js';
+import Order from "../models/Order.js";
 class CourierService {
   static async listCouriers() {
     return Courier.findAll({
@@ -22,6 +23,10 @@ class CourierService {
       if (!restaurantExists) throw new AppError(404, 'Restaurant not found');
     }
     const courier = await Courier.create({ userId: user.id,name: payload.name, status: payload?.status ?? 'free', lat: payload?.lat ?? null, lng: payload?.lng ?? null, restaurantId });
+    // persist telegramId if provided
+    if (payload.telegramId) {
+      await courier.update({ telegramId: payload.telegramId });
+    }
     return Courier.findByPk(courier.userId, { include: [{ model: User, as: 'user' }] });
   }
 
@@ -40,6 +45,7 @@ class CourierService {
     if ('status' in payload) updates['status'] = payload.status;
     if ('lat' in payload) updates['lat'] = payload.lat;
     if ('lng' in payload) updates['lng'] = payload.lng;
+    if ('telegramId' in payload) updates['telegramId'] = payload.telegramId;
     if ('restaurantId' in payload) {
       const restaurantId = (payload).restaurantId;
       if (restaurantId) {
@@ -67,6 +73,29 @@ class CourierService {
       await user.destroy();
     }
     return;
+  }
+
+  static async generateTelegramLink(userId, auth) {
+    // permission: admin or owner/operator
+    const isAdmin = auth?.role === 'admin';
+    const isOwner = auth?.userId === userId;
+    if (!isAdmin && !isOwner) throw new AppError(403, 'Not authorized');
+
+    const courier = await Courier.findByPk(userId, { include: [{ model: User, as: 'user' }] });
+    if (!courier) throw new AppError(404, 'Courier not found');
+
+    // generate token
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(20).toString('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // persist token fields on courier
+    await courier.update({ telegram_link_token: token, telegram_link_expires_at: expiresAt });
+
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+    const link = botUsername ? `https://t.me/${botUsername}?start=${token}` : `https://t.me/?start=${token}`;
+
+    return { link, token, expiresAt };
   }
 }
 

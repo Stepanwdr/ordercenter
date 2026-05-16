@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import { Menu, MenuItem, Restaurant, sequelize } from '../models/index.js';
+import { Menu, MenuItem,  sequelize } from '../models/index.js';
 
 dotenv.config();
 

@@ -20,7 +20,7 @@ Users.init({
   },
 
   email: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(64),
     allowNull: false,
     unique: true,
   },
@@ -57,7 +57,7 @@ Users.init({
   },
 
   role: {
-    type: DataTypes.ENUM('admin', 'courier', 'customer', 'operator'),
+    type: DataTypes.ENUM('admin', 'courier', 'customer', 'operator', 'dispatcher'),
     allowNull: true,
     defaultValue: 'admin',  // ← по умолчанию пациент
   },

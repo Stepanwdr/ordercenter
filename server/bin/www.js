@@ -20,6 +20,9 @@ app.set('port', port);
  */
 
 const server = http.createServer(app);
+// initialize socket.io
+import { initSocket } from '../services/socket.js';
+initSocket(server);
 
 /**
  * Listen on provided port, on all network interfaces.
