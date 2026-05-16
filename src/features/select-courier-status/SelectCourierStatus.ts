@@ -10,6 +10,7 @@ export const courierLocationOptions: { value: CourierLocationStatus; label: stri
   { value: 'free', label: 'Ազատ է' },
   { value: 'dayOff', label: 'Աշատանքի չէ' },
   { value: 'offline', label: 'Կապից դուրս' },
+  { value: 'busy', label: 'Զբաղված է' },
 ];
 
 
@@ -20,5 +21,6 @@ export const getStatusLabelOptions: Record<CourierLocationStatus, string> = {
   delivered:"Հասել է",
   free:"Ազատ է",
   dayOff:"Աշատանքի չէ",
-  offline:"Կապից դուրս"
+  offline:"Կապից դուրս",
+  busy:'Զբաղված է'
 }

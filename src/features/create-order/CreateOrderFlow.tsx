@@ -3,11 +3,10 @@ import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
-import {useRestaurantsQuery, useCouriersQuery, useCreateOrderMutation} from '@app/hooks/dataApi';
+import {useRestaurantsQuery, useCreateOrderMutation} from '@app/hooks/dataApi';
 import { useCategoriesQuery, useMenuItemsQuery, useMenusQuery } from '@app/hooks/menuApi';
 import type { MenuItem } from '@shared/types/Menu';
 import {CustomerBlock} from "@features/create-order/CustomerBlock.tsx";
-import { useOrdersStore } from '@store/ordersStore';
 
 type CartItem = MenuItem & { count: number };
 
@@ -47,12 +46,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
 
   const restaurantOptions = restaurants.map((r) => ({ value: r.id, label: r.name }));
   const menuOptions = menus.map((m) => ({ value: m.id, label: m.name }));
-  const { data: couriersResponse } = useCouriersQuery();
-  const allCouriers = couriersResponse?.data ?? [];
-  // Filter couriers by selected restaurant if present
-  const courierOptions = allCouriers
-    .filter((c) => !restaurantId || (c as any).restaurant?.id === restaurantId || (c as any).restaurantId === restaurantId)
-    .map((c) => ({ value: (c as any).userId ?? (c as any).id, label: c.user?.name ?? c.user?.email ?? (c as any).name ?? 'Courier' }));
+
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const byCategory = activeCategoryId === 'all' || item.categoryId === activeCategoryId;
@@ -120,7 +114,6 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
         <Dropdowns>
           <Dropdown label={'Ռետտորան'} value={restaurantId} options={restaurantOptions} placeholder="Ընտրել ռեստորան" onChange={(val) => { setRestaurantId(val) }} />
           <Dropdown label={'Մենյու'} value={menuId} options={menuOptions} placeholder="Ընտրել մենյու" onChange={setMenuId} />
-          <Dropdown label={'Առաքիչ'} value={courierId} options={courierOptions} placeholder="Ընտրել առաքիչ" onChange={setCourierId} />
         </Dropdowns>
         <SearchPanel>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Որոնել ապրանք..." />

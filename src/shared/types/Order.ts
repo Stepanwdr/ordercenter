@@ -47,6 +47,7 @@ export interface Order {
   prepTime: string;
   courierStatus: CourierStatus;
   totalAmount: number;
+  price: number;
   status: OrderStatus;
   createdAt: string;
   orderItems: OrderItem[];

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {type ReactNode, useEffect, useMemo, useRef, useState} from 'react';
 import { createPortal } from 'react-dom';
 import styled, { keyframes } from 'styled-components';
 import { Button } from '@shared/ui/Button';
 
 type DropdownOption = {
   value: string;
-  label: string;
+  label: ReactNode;
 };
 
 interface DropdownProps {
@@ -16,6 +16,7 @@ interface DropdownProps {
   label?: string;
   asTableCell?: boolean;
   triggerDisplay?: 'text' | 'chip';
+  triger?: ReactNode;
 }
 
 const fadeIn = keyframes`
@@ -118,6 +119,7 @@ export const Dropdown = ({
   label,
   asTableCell,
   triggerDisplay = 'text',
+   triger
 }: DropdownProps) => {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -168,12 +170,15 @@ export const Dropdown = ({
   return (
     <Label>
       {label && <LabelText>{label}</LabelText>}
-      <Trigger $asTableCell={asTableCell} ref={buttonRef} type="button" variant="secondary" onClick={() => setOpen((prev) => !prev)}>
+      {triger && <Trigger style={{background:"none",minWidth:"80px",justifyContent:"flex-end",backdropFilter:"none"}} ref={buttonRef} onClick={() => setOpen((prev) => !prev)}>{triger}</Trigger>}
+      {!triger && <Trigger $asTableCell={asTableCell} ref={buttonRef} type="button" variant="secondary"
+                onClick={() => setOpen((prev) => !prev)}>
         <TriggerValue>
-          {triggerDisplay === 'chip' && selectedOption ? <TriggerChip>{selectedLabel}</TriggerChip> : <span>{selectedLabel}</span>}
+          {triggerDisplay === 'chip' && selectedOption ? <TriggerChip>{selectedLabel}</TriggerChip> :
+            <span>{selectedLabel}</span>}
         </TriggerValue>
         <span>{open ? '🡡' : '🡣'}</span>
-      </Trigger>
+      </Trigger>}
       {open &&
         createPortal(
           <Overlay>

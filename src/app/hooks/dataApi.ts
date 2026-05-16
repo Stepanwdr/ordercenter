@@ -218,7 +218,9 @@ export const useAssignCourierMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['assign-courier'],
-    mutationFn: async ({ id, courierId }: { id: string; courierId: string }) => ordersApi.assignCourier(id, courierId),
+    mutationFn: async ({ id, courierId }: { id: string; courierId: string }) => {
+      return await api.put<{ data: Order }>(`/orders/${id}/assign-courier`, { courierId });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
     },

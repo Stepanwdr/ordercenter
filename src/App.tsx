@@ -16,6 +16,7 @@ const MenuManagementPage = lazy(() => import('@pages/menu-management/MenuManagem
 const SettingsPage = lazy(() => import('@pages/settings/SettingsPage'));
 const LoginPage = lazy(() => import('@pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@pages/auth/RegisterPage'));
+const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
 
 const AppShell = styled.div`
   position: relative;
@@ -66,6 +67,8 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
+
+      <Route path="/courier-app" element={<CourierApp />} />
 
       <Route element={<PrivateRoutes />}>
         <Route element={<PrivateLayout />}>

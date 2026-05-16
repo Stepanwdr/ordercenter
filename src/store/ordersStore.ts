@@ -22,7 +22,6 @@ interface OrdersState {
   createOrder: (payload: CreateOrderRequest) => Promise<void>;
   updateOrder: (id: string, payload: Partial<Order>) => Promise<void>;
   sendOrder: (id: string) => Promise<void>;
-  assignCourier: (id: string, courierId: string) => Promise<void>;
   selectOrder: (order: Order | null) => void;
   mergeOrder: (order: Partial<Order> & { id: string }) => void;
   setCourierUpdate: (payload: { courierId: string; status: string; orderId?: string }) => void;
@@ -78,18 +77,6 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     set({ loading: true, error: undefined });
     try {
       const updated = await ordersApi.sendOrder(id);
-      set((state) => ({ orders: state.orders.map((order) => (order.id === id ? updated : order)) }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-    } finally {
-      set({ loading: false });
-    }
-  },
-
-  assignCourier: async (id, courierId) => {
-    set({ loading: true, error: undefined });
-    try {
-      const updated = await ordersApi.assignCourier(id, courierId);
       set((state) => ({ orders: state.orders.map((order) => (order.id === id ? updated : order)) }));
     } catch (error) {
       set({ error: (error as Error).message });

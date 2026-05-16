@@ -3,23 +3,19 @@ import type {Order} from "../types";
 
 export const ordersApi = {
   getOrders: async (): Promise<Order[]> => {
-    const response = await api.get<Order[]>('/orders');
-    return response.data;
+    const response = await api.get<{ data: Order[] }>('/orders');
+    return response.data.data;
   },
   createOrder: async (payload: Partial<Order>): Promise<Order> => {
-    const response = await api.post<Order>('/orders', payload);
-    return response.data;
+    const response = await api.post<{ data: Order }>('/orders', payload);
+    return response.data.data;
   },
   updateOrder: async (id: string, payload: Partial<Order>): Promise<Order> => {
-    const response = await api.patch<Order>(`/orders/${id}`, payload);
-    return response.data;
+    const response = await api.patch<{ data: Order }>(`/orders/${id}`, payload);
+    return response.data.data;
   },
   sendOrder: async (id: string): Promise<Order> => {
-    const response = await api.post<Order>(`/orders/${id}/send`);
-    return response.data;
-  },
-  assignCourier: async (id: string, courierId: string): Promise<Order> => {
-    const response = await api.patch<Order>(`/orders/${id}/assign-courier`, { courierId });
-    return response.data;
+    const response = await api.post<{ data: Order }>(`/orders/${id}/send`);
+    return response.data.data;
   },
 };

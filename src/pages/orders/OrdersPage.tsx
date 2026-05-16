@@ -9,9 +9,11 @@ import type { Column } from 'react-data-grid';
 import type {Courier, CourierStatus, Order, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
-import { useOrdersQuery } from '@app/hooks/dataApi';
+import {useCouriersQuery, useOrdersQuery, useAssignCourierMutation} from '@app/hooks/dataApi';
+import { toast } from 'react-toastify';
 import {courierLocationOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
 import {formatTime} from "@shared/utils/date.ts";
+import CouriersPage from "@pages/couriers/CouriersPage.tsx";
 
 const Header = styled.div`
     display: flex;
@@ -127,11 +129,19 @@ const orderStatusOptions: { value: OrderStatus; label: string }[] = [
 
 const OrdersPage = () => {
   const { data: apiOrders } = useOrdersQuery();
+  const [isOpenCouriersDialog,setOpenCouriersDialog]=useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [courierId, setCourierId] = useState('');
   const [activeStatus, setActiveStatus] = useState<(typeof statuses)[number]>('all');
   const [selectedCourier, setSelectedCourier] = useState('all');
+  const [selectedOrder,setSelectedOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const { data: couriersResponse } = useCouriersQuery();
+  const allCouriers = couriersResponse?.data ?? [];
+  // Filter couriers by selected restaurant if present
+  const courierOptions = allCouriers
+    .map((c) => ({ value: (c as any).userId ?? (c as any).id, label: c.user?.name ?? c.user?.email ?? (c as any).name ?? 'Courier' }));
   const pageSize = 10;
   const orders= apiOrders &&  apiOrders?.length ? apiOrders : [];
   // const couriers = useMemo(
@@ -154,6 +164,23 @@ const OrdersPage = () => {
   const handleOrderStatusChange = useCallback((id: string, value: OrderStatus) => {
   }, []);
 
+
+  const assignCourierMutation = useAssignCourierMutation();
+
+  const handleCourierAsignToOrder = async (courierId: string) => {
+    if (!selectedOrder) return;
+    try {
+      await assignCourierMutation.mutateAsync({ id: selectedOrder.id, courierId });
+      toast.success('Առաքիչը հաջողությամբ նշանակվեց');
+      // close couriers dialog / drawer
+      setSelectedOrder(null);
+      setOpenCouriersDialog('');
+    } catch (err: any) {
+      toast.error(err?.message || 'Անհաջող հանձնարարություն');
+    }
+  };
+
+
   const columns = useMemo<Column<Order>[]>(
     () => [
       { key: 'code', name: 'Կոդ', resizable: true, draggable: true},
@@ -175,7 +202,10 @@ const OrdersPage = () => {
       },
       { key: 'courier', name: 'Առաքիչ', resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
-          return row?.courierProfile?.user?.name;
+          return row?.courierProfile?.user?.name ?? <Button style={{minHeight:"25px"}} variant={'primary'} onClick={()=>{
+            setSelectedOrder(row);
+            setOpenCouriersDialog(row.id);
+          }}>Նշանակել առաքիչ</Button>;
         },
       },
       { key: 'orderItems', name: 'Պատվեր', resizable: true, draggable: true,
@@ -280,7 +310,7 @@ const OrdersPage = () => {
     const start = (currentPage - 1) * pageSize;
     return filteredOrders.slice(start, start + pageSize);
   }, [currentPage, filteredOrders]);
-  console.log({orders})
+
   return (
     <div>
       <Header>
@@ -297,12 +327,7 @@ const OrdersPage = () => {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
-          {/*<Dropdown*/}
-          {/*  value={selectedCourier}*/}
-          {/*  options={couriers}*/}
-          {/*  placeholder="Ընտրել առաքիչը"*/}
-          {/*  onChange={setSelectedCourier}*/}
-          {/*/>*/}
+          <Dropdown label={'Առաքիչ'} value={courierId} options={courierOptions} placeholder="Ընտրել առաքիչ" onChange={setCourierId} />
         </Controls>
         <ControlsRow>
           <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {filteredOrders.length} պատվեր  </span>
@@ -329,6 +354,9 @@ const OrdersPage = () => {
 
       <Drawer open={isCreateOpen} position="bottom" title="Ստեղծել նոր պատվեր" onClose={() => setCreateOpen(false)}>
         <CreateOrderFlow onClose={()=>setCreateOpen(false)}/>
+      </Drawer>
+      <Drawer open={Boolean(selectedOrder)} position="bottom" title="Առաքիչների ցանկ" onClose={() => setSelectedOrder(null)}>
+        <CouriersPage selectedOrder={selectedOrder} handleCourierAsignToOrder={handleCourierAsignToOrder} />
       </Drawer>
     </div>
   );

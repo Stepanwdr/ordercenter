@@ -12,10 +12,11 @@ import {
   useRestaurantsQuery,
   useUpdateCourierMutation,
 } from '@app/hooks/dataApi';
-import type {Courier} from '@shared/types';
+import type {Courier, Order} from '@shared/types';
 import {Dropdown} from "@shared/ui/Dropdown.tsx";
 import {courierLocationOptions, getStatusLabelOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
 import {toast} from "react-toastify";
+import {api} from "@shared/api/base.ts";
 
 
 const initialCourierForm = {
@@ -27,11 +28,13 @@ const initialCourierForm = {
   restaurantId:""
 };
 
- const CouriersPage = () => {
+ const CouriersPage = ({selectedOrder,handleCourierAsignToOrder}:{selectedOrder?:Order | null, handleCourierAsignToOrder?:(courierId:string)=>void}) => {
   const { data: apiCouriers } = useCouriersQuery();
   const createCourierMutation = useCreateCourierMutation(closeDrawer);
   const updateCourierMutation = useUpdateCourierMutation(closeDrawer);
   const deleteCourierMutation = useDeleteCourierMutation();
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState('');
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [formState, setFormState] = useState({ ...initialCourierForm, restaurantId: '' as string });
@@ -86,15 +89,68 @@ const initialCourierForm = {
     await deleteCourierMutation.mutateAsync(id);
     toast.success("Առաքիչը ջնջվեց համակարգից")
   }
-  const handleEdit = ( courier:Courier)=> {
-     setSelectedCourier(courier)
-  }
-
 
   const displayedCouriers = apiCouriers?.data || [];
 
   const restaurantOptions=  restaurantsApi?.data?.map(restaurant => ({value:restaurant.id,label:restaurant.name})) || [];
 
+const editOptions=[
+
+  {label:<Button style={{width:'100%'}} variant="primary" >
+     Դիտել
+    </Button>,
+    value:"show"
+  },
+  {label:<Button style={{width:'100%'}} variant="secondary" >
+      Ստանալ բոտի հղում
+    </Button>,
+    value:"botLink"
+  },
+  {label:<Button style={{width:'100%'}} variant="secondary" >
+     Ջնջել
+    </Button>,
+    value:"delete"
+  },
+  {label:<Button style={{width:'100%'}} variant="secondary" >
+      Խմբագրել
+    </Button>,
+    value:"edit"
+  },
+  ...(handleCourierAsignToOrder ? [{label:<Button style={{width:'100%'}} variant="secondary" >
+      Նշանակել պատվեր
+    </Button>,
+    value:"asignCourier"
+  }]:[]),
+  ]
+
+   const handleAction =async (action:string,courier:Courier)=>{
+     console.log(action)
+       if(action === 'asignCourier' && handleCourierAsignToOrder){
+         handleCourierAsignToOrder(courier.userId)
+       }
+       if(action === 'show') {
+         navigate(`/couriers/${courier.userId}`)
+       }
+       if(action === 'delete') {
+         await handleDelete(courier.userId)
+       }
+       if(action === 'edit') {
+         setSelectedCourier(courier)
+       }
+       if(action === 'botLink') {
+          try{
+      const res = await api.post(`/couriers/${courier.userId}/generate-telegram-link`);
+           const data = await res.data.data
+         if (data  && data.link) {
+            setGeneratedLink(data.link);
+              setIsLinkModalOpen(true);
+            } else {
+            toast.error('Link generation failed')
+             }
+          } catch (err) { toast.error('Network error'); }
+
+       }
+   }
 
   useEffect(() => {
     if (selectedCourier){
@@ -111,6 +167,7 @@ const initialCourierForm = {
     }
 
   },[selectedCourier])
+
   return (
     <div>
       <PageHeader>
@@ -153,19 +210,16 @@ const initialCourierForm = {
                 </Td>
                 <Td>{restoran}</Td>
                 <Td>
-                  <Button variant="ghost" onClick={() => navigate(`/couriers/${cid}`)}>
-                    Դիտել
-                  </Button>
-                  <Button variant="secondary" onClick={() => handleEdit(courier)} style={{ marginLeft: '10px' }}>
-                    Խմբագրել
-                  </Button>
-                  <Button variant="secondary" onClick={() => handleDelete(cid)} style={{ marginLeft: '10px' }}>
-                    Ջնջել
-                  </Button>
+                  <Dropdown triger={
+                    <><svg width="4" height="16" viewBox="0 0 4 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2 16C1.45 16 0.979167 15.8042 0.5875 15.4125C0.195833 15.0208 0 14.55 0 14C0 13.45 0.195833 12.9792 0.5875 12.5875C0.979167 12.1958 1.45 12 2 12C2.55 12 3.02083 12.1958 3.4125 12.5875C3.80417 12.9792 4 13.45 4 14C4 14.55 3.80417 15.0208 3.4125 15.4125C3.02083 15.8042 2.55 16 2 16ZM2 10C1.45 10 0.979167 9.80417 0.5875 9.4125C0.195833 9.02083 0 8.55 0 8C0 7.45 0.195833 6.97917 0.5875 6.5875C0.979167 6.19583 1.45 6 2 6C2.55 6 3.02083 6.19583 3.4125 6.5875C3.80417 6.97917 4 7.45 4 8C4 8.55 3.80417 9.02083 3.4125 9.4125C3.02083 9.80417 2.55 10 2 10ZM2 4C1.45 4 0.979167 3.80417 0.5875 3.4125C0.195833 3.02083 0 2.55 0 2C0 1.45 0.195833 0.979167 0.5875 0.5875C0.979167 0.195833 1.45 0 2 0C2.55 0 3.02083 0.195833 3.4125 0.5875C3.80417 0.979167 4 1.45 4 2C4 2.55 3.80417 3.02083 3.4125 3.4125C3.02083 3.80417 2.55 4 2 4Z" fill="#3D4A3D"/>
+                    </svg>
+                    </>
+                  } value={'action'} onChange={(value)=>handleAction(value,courier)} options={editOptions} />
                 </Td>
               </tr>
             );
-          })}
+        })}
           </tbody>
           </Table>
       </TableWrapper>
@@ -233,6 +287,19 @@ const initialCourierForm = {
           </div>
         </form>
       </Drawer>
+      {isLinkModalOpen && (
+        <div role="dialog" aria-modal style={{position:'fixed',left:0,top:0,right:0,bottom:0,display:'grid',placeItems:'center',background:'rgba(0,0,0,0.4)'}} onClick={()=>setIsLinkModalOpen(false)}>
+          <div onClick={(e)=>e.stopPropagation()} style={{background:'#fff',padding:20,borderRadius:8,minWidth:320}}>
+            <h3 style={{color:'black'}}>Telegram link</h3>
+            <p style={{wordBreak:'break-all',color:'black'}}>{generatedLink}</p>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <Button variant="primary"><a target={'_blank'} href={generatedLink}>Մեկնարկել բոտը</a></Button>
+              <Button variant="primary" onClick={()=>{navigator.clipboard.writeText(generatedLink);toast.success('Copied')}}>Կրկնօրինակել</Button>
+              <Button onClick={()=>setIsLinkModalOpen(false)}>Փակել</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
