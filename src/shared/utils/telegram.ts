@@ -67,6 +67,7 @@ declare global {
 }
 
 export function getTelegramWebApp(): TelegramWebApp | null {
+  console.log(window.Telegram?.WebApp)
   return window.Telegram?.WebApp ?? null;
 }
 
