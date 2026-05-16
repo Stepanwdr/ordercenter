@@ -189,6 +189,7 @@ export default function CourierApp() {
 
   useEffect(() => {
     if (!isTelegramMiniApp()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('This app must be opened inside Telegram');
       setLoading(false);
       return;

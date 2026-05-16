@@ -9,7 +9,6 @@ export const initializeSocket = () => {
   }
 
   socket = io(import.meta.env.VITE_WS_URL ?? 'http://localhost:4000', {
-    transports: ['websocket'],
   });
 
   const store = useOrdersStore.getState();
