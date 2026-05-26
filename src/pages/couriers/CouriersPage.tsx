@@ -52,34 +52,35 @@ const initialCourierForm = {
     setSelectedCourier(null);
   };
 
-  const saveCourier = (event: FormEvent<HTMLFormElement>) => {
+  const saveCourier = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!formState.name.trim() || !formState.phone.trim()) return;
 
     if (selectedCourier) {
       // Update existing courier
-      updateCourierMutation.mutateAsync({
+      await updateCourierMutation.mutateAsync({
         id: selectedCourier.userId,
         payload: {
-        name: formState.name,
-        phone: formState.phone,
-        status: formState.status as Courier['status'],
-        currentOrder: formState.currentOrder,
-        restaurantId: (formState).restaurantId,
-        email: formState.email,
-      } });
-    } else {
-      // Create new courier
-      createCourierMutation.mutateAsync({
-        payload:{
-          email: formState.email || '',
           name: formState.name,
           phone: formState.phone,
-          status: formState.status,
+          status: formState.status as Courier['status'],
           currentOrder: formState.currentOrder,
-          restaurantId: formState.restaurantId
+          restaurantId: (formState).restaurantId,
+          email: formState.email,
         }
-      }
+      });
+    } else {
+      // Create new courier
+      await createCourierMutation.mutateAsync({
+          payload: {
+            email: formState.email || '',
+            name: formState.name,
+            phone: formState.phone,
+            status: formState.status,
+            currentOrder: formState.currentOrder,
+            restaurantId: formState.restaurantId
+          }
+        }
       );
     }
   };

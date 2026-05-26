@@ -1,6 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../services/sequelize.js';
-import {OrderPaymentMethod, OrderStatus} from "../utils/validators.js";
+import {OrderPaymentMethod, OrderStatus, courierStatuses} from "../utils/validators.js";
 
 class Order extends Model {}
 
@@ -60,6 +60,10 @@ Order.init(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    courierStatus: {
+      type: DataTypes.ENUM(courierStatuses),
+      allowNull: true,
+    },
     restaurantId: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -100,6 +104,29 @@ Order.init(
     long:{
       type: DataTypes.INTEGER,
       allowNull: true,
+    },
+    duration:{
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    courierRestaurantAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    courierInRouteAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    courierPickedUpAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    courierDeliveredAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    completedAt:{
+      type: DataTypes.DATE,
     }
   },
   {

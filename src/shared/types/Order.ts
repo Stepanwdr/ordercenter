@@ -3,7 +3,7 @@ import type {Restaurant} from "@shared/types/Restaurant.ts";
 import type {User} from "@shared/types/User.ts";
 
 export type OrderStatus = 'new' | 'cooking' | 'ready' | 'enRoute' | 'done';
-export type OrderPaymentMethod = 'CASH' | 'ONLINE' | 'BANK POS' | 'IDRAM';
+export type OrderPaymentMethod = 'CASH' | 'ONLINE' | 'BANK-POS' | 'IDRAM';
 export interface menuItem {
   article:  string
   categoryId: string
@@ -45,7 +45,7 @@ export interface Order {
   operatorName: string;
   payMethod: OrderPaymentMethod;
   prepTime: string;
-  courierStatus: CourierStatus;
+  courierStatus?: CourierStatus;
   totalAmount: number;
   price: number;
   status: OrderStatus;
@@ -63,6 +63,11 @@ export interface Order {
   paid: boolean;
   code:string
   operator: User
+  courierRestaurantAt:string
+  courierPickedUpAt:string
+  courierInRouteAt:string
+  courierDeliveredAt:string
+  completedAt:string
 }
 
 export interface MenuItemOption {

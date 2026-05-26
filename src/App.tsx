@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import { PrivateRoutes } from './routes/PrivateRoutes';
 // import { ProfilePage } from '@pages/profile/ProfilePage';
 import { PublicRoutes } from './routes/PublicRoutes';
-import { initializeSocket } from '@shared/lib/socket';
 import { Sidebar } from '@shared/ui/Sidebar';
 import 'react-data-grid/lib/styles.css';
 import {lazy} from "react";

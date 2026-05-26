@@ -18,4 +18,12 @@ export const ordersApi = {
     const response = await api.post<{ data: Order }>(`/orders/${id}/send`);
     return response.data.data;
   },
+  updateOrderStatus: async (id: string, status: string): Promise<Order> => {
+    const response = await api.put<{ data: Order }>(`/orders/${id}/status`, { status });
+    return response.data.data;
+  },
+  updateOrderPayMethod: async (id: string, payMethod: string): Promise<Order> => {
+    const response = await api.put<{ data: Order }>(`/orders/${id}/pay-method`, { payMethod });
+    return response.data.data;
+  },
 };

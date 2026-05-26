@@ -1,6 +1,5 @@
 import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
-import { Table } from '@shared/ux/Table';
 
 const Grid = styled.div`
   display: grid;

@@ -214,11 +214,25 @@ export const useSendOrderMutation = () => {
   });
 };
 
+export const useUpdateOrderStatusMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['update-order-status'],
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      ordersApi.updateOrderStatus(id, status),
+    onSuccess: async () => {
+      toast.success('Պատվերի կարգավիճակը փոխվեց․');
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+};
+
 export const useAssignCourierMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['assign-courier'],
     mutationFn: async ({ id, courierId }: { id: string; courierId: string }) => {
+      toast.success(`Առաքիչը նշանակվեց ${id} պատվերին`);
       return await api.put<{ data: Order }>(`/orders/${id}/assign-courier`, { courierId });
     },
     onSuccess: async () => {
@@ -238,6 +252,43 @@ export const useUpdateCourierMutation = (successCb:()=>void) => {
     onSuccess: async () => {
       successCb()
       await queryClient.invalidateQueries({ queryKey: ['couriers'] });
+    },
+  });
+};
+
+export const useUpdateCourierStatusMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['update-courier-status'],
+    mutationFn: async ({ id, status, orderId }: { id: string; status: Courier['status']; orderId?: string }) =>
+      api.put<{ data: Courier }>(`/couriers/${id}/status`, { status, orderId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+};
+
+export const useUpdateOrderCourierStatusMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['update-order-courier-status'],
+    mutationFn: async ({ orderId, courierStatus }: { orderId: string; courierStatus: Courier['status'] }) =>
+      api.put<{ data: Order }>(`/orders/${orderId}/courier-status`, { courierStatus }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+};
+
+export const useUpdateOrderPayMethodMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['update-order-pay-method'],
+    mutationFn: async ({ id, payMethod }: { id: string; payMethod: string }) =>
+      ordersApi.updateOrderPayMethod(id, payMethod),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
     },
   });
 };

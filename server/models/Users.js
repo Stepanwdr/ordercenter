@@ -22,7 +22,7 @@ Users.init({
   email: {
     type: DataTypes.STRING(64),
     allowNull: false,
-    unique: true,
+    unique: 'users_email_unique'
   },
 
   // ── Google Auth ─────────────────────────────────────────────────────────────

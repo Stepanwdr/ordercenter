@@ -17,6 +17,7 @@ interface DropdownProps {
   asTableCell?: boolean;
   triggerDisplay?: 'text' | 'chip';
   triger?: ReactNode;
+  trigerDisabled?: boolean;
 }
 
 const fadeIn = keyframes`
@@ -119,7 +120,8 @@ export const Dropdown = ({
   label,
   asTableCell,
   triggerDisplay = 'text',
-   triger
+   triger,
+trigerDisabled
 }: DropdownProps) => {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -171,7 +173,7 @@ export const Dropdown = ({
     <Label>
       {label && <LabelText>{label}</LabelText>}
       {triger && <Trigger style={{background:"none",minWidth:"80px",justifyContent:"flex-end",backdropFilter:"none"}} ref={buttonRef} onClick={() => setOpen((prev) => !prev)}>{triger}</Trigger>}
-      {!triger && <Trigger $asTableCell={asTableCell} ref={buttonRef} type="button" variant="secondary"
+      {!triger && <Trigger disabled={trigerDisabled} $asTableCell={asTableCell} ref={buttonRef} type="button" variant="secondary"
                 onClick={() => setOpen((prev) => !prev)}>
         <TriggerValue>
           {triggerDisplay === 'chip' && selectedOption ? <TriggerChip>{selectedLabel}</TriggerChip> :

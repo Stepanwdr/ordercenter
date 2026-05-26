@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 const roleSchema = z.enum(['admin', 'courier', 'customer', 'operator']);
-const orderStatusSchema = z.enum(['pending', 'accepted', 'cooking', 'ready', 'delivering', 'completed']);
 export const courierStatuses= ['atRestaurant','pickedUp','enRoute','delivered','free','dayOff','offline','busy']
 const courierStatusSchema = z.enum(courierStatuses);
 
-export const OrderPaymentMethod = ['CASH' , 'ONLINE' , 'BANK POS' , 'IDRAM'];
-export const OrderStatus = ['pending','accepted','cooking','ready','picked_up','delivering','completed','cancelled'];
+export const OrderPaymentMethod = ['CASH' , 'ONLINE' , 'BANK-POS' , 'IDRAM'];
+export const OrderStatus = ['pending','done','cooking','ready','picked_up','delivering','completed','cancelled','enRoute'];
+const orderStatusSchema = z.enum(OrderStatus);
 
 export const schemas = {
   register: z.object({
@@ -114,6 +114,16 @@ export const schemas = {
     lat: z.coerce.number().min(-90).max(90),
     lng: z.coerce.number().min(-180).max(180),
     status: courierStatusSchema.optional(),
+  }),
+  updateCourierStatus: z.object({
+    status: z.enum(courierStatuses),
+    orderId: z.string().uuid().optional(),
+  }),
+  updateOrderCourierStatus: z.object({
+    courierStatus: z.enum(courierStatuses),
+  }),
+  updateOrderPayMethod: z.object({
+    payMethod: z.enum(OrderPaymentMethod),
   }),
   createUser: z.object({
     email: z.string().email(),

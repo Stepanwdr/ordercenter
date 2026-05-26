@@ -9,10 +9,10 @@ import type { Column } from 'react-data-grid';
 import type {Courier, CourierStatus, Order, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
-import {useCouriersQuery, useOrdersQuery, useAssignCourierMutation} from '@app/hooks/dataApi';
+import {useCouriersQuery, useOrdersQuery, useAssignCourierMutation, useUpdateOrderCourierStatusMutation, useUpdateOrderStatusMutation, useUpdateOrderPayMethodMutation} from '@app/hooks/dataApi';
 import { toast } from 'react-toastify';
 import {courierLocationOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
-import {formatTime} from "@shared/utils/date.ts";
+import {formatTime,getDuration} from "@shared/utils/date.ts";
 import CouriersPage from "@pages/couriers/CouriersPage.tsx";
 
 const Header = styled.div`
@@ -155,17 +155,40 @@ const OrdersPage = () => {
   //   [orders]
   // );
   const couriers = [] as Courier[];
-  const handlePaidMethodChange = useCallback((id: string, value: PaymentMethod) => {
-  }, []);
+  const updateOrderPayMethodMutation = useUpdateOrderPayMethodMutation();
 
-  const handleCourierStatusChange = useCallback((id: string, value: CourierStatus) => {
-  }, []);
-
-  const handleOrderStatusChange = useCallback((id: string, value: OrderStatus) => {
-  }, []);
+  const handlePaidMethodChange = useCallback(async (id: string, value: PaymentMethod) => {
+    try {
+      await updateOrderPayMethodMutation.mutateAsync({ id, payMethod: value });
+      toast.success('Метод оплаты обновлён');
+    } catch {
+      toast.error('Ошибка обновления метода оплаты');
+    }
+  }, [updateOrderPayMethodMutation]);
 
 
   const assignCourierMutation = useAssignCourierMutation();
+  const updateOrderCourierStatusMutation = useUpdateOrderCourierStatusMutation();
+  const updateOrderStatusMutation = useUpdateOrderStatusMutation();
+
+  const handleOrderStatusChange = useCallback(
+    async (id: string, value: OrderStatus) => {
+      await updateOrderStatusMutation.mutateAsync({
+        id,
+        status: value
+      });
+    },
+    [updateOrderStatusMutation]
+  );
+
+  const handleCourierStatusChange = useCallback(async (orderId: string, courierStatus: CourierStatus) => {
+    try {
+      await updateOrderCourierStatusMutation.mutateAsync({ orderId, courierStatus });
+      toast.success('Статус курьера для заказа обновлён');
+    } catch {
+      toast.error('Ошибка обновления статуса');
+    }
+  }, [updateOrderCourierStatusMutation]);
 
   const handleCourierAsignToOrder = async (courierId: string) => {
     if (!selectedOrder) return;
@@ -180,12 +203,14 @@ const OrdersPage = () => {
     }
   };
 
-
   const columns = useMemo<Column<Order>[]>(
     () => [
       { key: 'code', name: 'Կոդ', resizable: true, draggable: true},
+      { key: 'orderDuration', name: 'Պատվերի տևողությունը', resizable: true, draggable: true,renderCell:({row})=> <Button style={{minHeight:"30px",width:"100%"}}>{getDuration(row.createdAt,row.completedAt)}</Button> },
       { key: 'customerName', name: 'Հաճախորդ', resizable: true, draggable: true },
       { key: 'customerPhone', name: 'Հաճախորդի հեռ․', resizable: true, draggable: true },
+      { key: 'completedAt', name: 'Պատվերն ավարտվել է', resizable: true, draggable: true ,
+        renderCell:({ row }: { row: Order })=>formatTime(row.completedAt)},
       { key: 'orderTime', name: 'Գրանցման ամսաթիվը', resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
           return formatTime(row.createdAt)
@@ -200,6 +225,10 @@ const OrdersPage = () => {
           return row?.restaurant?.name;
         },
       },
+      { key: 'courierRestaurantAt', name: 'Առաքիչը հասել է ռեստորան', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierRestaurantAt) },
+      { key: 'courierDeliveredAt', name: 'Առաքիչը առաքումը ավարտել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierDeliveredAt) },
+      { key: 'courierPickedUpAt', name: 'Առաքիչը պատվերը վերցրել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierPickedUpAt) },
+      { key: 'courierInRouteAt', name: 'Առաքիչը ճանապարհին է եղել', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierInRouteAt) },
       { key: 'courier', name: 'Առաքիչ', resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
           return row?.courierProfile?.user?.name ?? <Button style={{minHeight:"25px"}} variant={'primary'} onClick={()=>{
@@ -258,12 +287,13 @@ const OrdersPage = () => {
         draggable: true,
         renderCell: ({ row }: { row: Order }) => (
           <Dropdown
-            value={row?.courierProfile?.status}
+            value={row?.courierStatus || ''}
             options={courierLocationOptions}
             placeholder="Առաքիչի կարգավիճակը"
             onChange={(value) => handleCourierStatusChange(row.id, value as CourierStatus)}
             asTableCell
             triggerDisplay="chip"
+            trigerDisabled={Boolean(!row.courierProfile)}
           />
         ),
       },

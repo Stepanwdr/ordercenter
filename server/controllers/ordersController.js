@@ -2,10 +2,10 @@ import OrderService from '../services/orderService.js';
 
 class OrdersController {
   static list = async (req, res) => {
-    const orders = await OrderService.listOrders();
+    const result = await OrderService.listOrders(req.query);
     res.json({
       success: true,
-      data: orders,
+      ...result,
     });
   };
 
@@ -31,6 +31,16 @@ class OrdersController {
       success: true,
       data: order,
     });
+  };
+
+  static updateCourierStatus = async (req, res) => {
+    const order = await OrderService.updateOrderCourierStatus(req.params.id, req.validated.courierStatus);
+    res.json({ success: true, data: order });
+  };
+
+  static updatePayMethod = async (req, res) => {
+    const order = await OrderService.updateOrderPayMethod(req.params.id, req.validated.payMethod);
+    res.json({ success: true, data: order });
   };
 }
 

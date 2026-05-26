@@ -1,6 +1,6 @@
 import { User, Courier, Restaurant } from '../models/index.js';
 import AppError from '../utils/AppError.js';
-import Order from "../models/Order.js";
+import { getIo } from './socket.js';
 class CourierService {
   static async listCouriers() {
     return Courier.findAll({
@@ -61,6 +61,21 @@ class CourierService {
     return Courier.findByPk(userId, { include: [{ model: User, as: 'user' }] });
   }
 
+  static async updateCourierStatus(userId, status, orderId) {
+    const courier = await Courier.findByPk(userId);
+    if (!courier) throw new AppError(404, 'Courier not found');
+    courier.status = status;
+    await courier.save();
+    try {
+      const io = getIo();
+      if (io) {
+        io.emit('courier:update', { ...courier.toJSON(), orderId });
+        if (orderId) io.emit('order:courier_status_changed', { orderId, courierId: userId, status });
+      }
+    } catch {}
+    return Courier.findByPk(userId, { include: [{ model: User, as: 'user' }] });
+  }
+
   static async deleteCourier(userId, auth) {
     const courier = await Courier.findByPk(userId);
     if (!courier) throw new AppError(404, 'Courier not found');
@@ -93,7 +108,7 @@ class CourierService {
     await courier.update({ telegram_link_token: token, telegram_link_expires_at: expiresAt });
 
     const botUsername = process.env.TELEGRAM_BOT_USERNAME;
-    const link = botUsername ? `https://t.me/${botUsername}?start=${token}` : `https://t.me/?start=${token}`;
+    const link = `https://t.me/deliverio_orders_bot?start=${token}`;
 
     return { link, token, expiresAt };
   }

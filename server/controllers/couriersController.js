@@ -30,6 +30,12 @@ class CouriersController {
     const result = await CourierService.generateTelegramLink(req.params.id, req.auth);
     res.json({ success: true, data: result });
   };
+
+  static updateStatus = async (req, res) => {
+    const { status, orderId } = req.validated;
+    const courier = await CourierService.updateCourierStatus(req.params.id, status, orderId);
+    res.json({ success: true, data: courier });
+  };
 }
 
 export default CouriersController;

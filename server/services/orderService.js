@@ -1,23 +1,47 @@
+import { Op } from 'sequelize';
 import { Courier, Order, Restaurant, User, OrderItem, MenuItem, Menu, sequelize } from '../models/index.js';
 import telegramService from './telegramService.js';
 import AppError from '../utils/AppError.js';
-import { canTransitionOrderStatus } from '../utils/orderFlow.js';
+import {canTransitionOrderStatus, statusFieldMap} from '../utils/orderFlow.js';
 import { getIo } from './socket.js';
 const generateCode=()=>{
   const now = new Date();
 
   const pad = (n) => n.toString().padStart(2, '0');
 
-  const code = `ORD_${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const code = `ORD_${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
   return code;
 }
+
+const ORDER_SORTABLE_FIELDS = ['id', 'status', 'price', 'code', 'createdAt', 'updatedAt', 'prepTime', 'payMethod', 'paid', 'customerName', 'customerPhone', 'deliveryAddress', 'orderType', 'courierStatus'];
+
 class OrderService {
-  static async listOrders() {
-    return Order.findAll({
+  static async listOrders(query = {}) {
+    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC', status, search, courierId, restaurantId } = query;
+
+    const safeSortBy = ORDER_SORTABLE_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
+    const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const where = {};
+    if (status && status !== 'all') where.status = status;
+    if (courierId) where.courierId = courierId;
+    if (restaurantId) where.restaurantId = restaurantId;
+    if (search) {
+      where[Op.or] = [
+        { code: { [Op.like]: `%${search}%` } },
+        { customerName: { [Op.like]: `%${search}%` } },
+        { customerPhone: { [Op.like]: `%${search}%` } },
+        { deliveryAddress: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const offset = (Number(page) - 1) * Number(limit);
+
+    const { count, rows } = await Order.findAndCountAll({
+      where,
       include: [
         { model: User, as: 'courier' },
-        // include courier profile from Courier table (with linked User)
         { model: Courier, as: 'courierProfile', include: [{ model: User, as: 'user' }] },
         { model: User, as: 'operator' },
         {
@@ -49,8 +73,21 @@ class OrderService {
           ],
         },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [[safeSortBy, safeSortOrder]],
+      offset,
+      limit: Number(limit),
+      distinct: true,
     });
+
+    return {
+      data: rows,
+      meta: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(count / Number(limit)),
+      },
+    };
   }
 
   static async createOrder(payload, authUser) {
@@ -157,8 +194,6 @@ class OrderService {
   }
 
   static async assignCourier(orderId, courierId) {
-    console.log({orderId,
-      courierId})
     return sequelize.transaction(async (transaction) => {
       const [order, courierProfile, courierUser] = await Promise.all([
         Order.findByPk(orderId, { transaction }),
@@ -218,16 +253,20 @@ class OrderService {
         throw new AppError(404, 'Order not found');
       }
 
-      if (!canTransitionOrderStatus(order.status, nextStatus)) {
-        throw new AppError(409, `Cannot move order from ${order.status} to ${nextStatus}`);
-      }
+      // if (!canTransitionOrderStatus(order.status, nextStatus)) {
+      //   throw new AppError(409, `Cannot move order from ${order.status} to ${nextStatus}`);
+      // }
 
       order.status = nextStatus;
+      if(nextStatus ==='done'){
+        order.completedAt = new Date();
+      }
+
       await order.save({ transaction });
 
-      if (nextStatus === 'completed' && order.courierId) {
+      if (nextStatus === 'done' && order.courierId) {
         await Courier.update(
-          { status: 'available' },
+          { status: 'free' },
           {
             where: { userId: order.courierId },
             transaction,
@@ -237,6 +276,44 @@ class OrderService {
 
       return order;
     });
+  }
+
+  static async updateOrderCourierStatus(orderId, courierStatus) {
+    const order = await Order.findByPk(orderId);
+    if (!order) throw new AppError(404, 'Order not found');
+
+    order.courierStatus = courierStatus;
+
+    const field = statusFieldMap[courierStatus];
+
+    if (field) {
+      order[field] = new Date();
+    }
+    if(courierStatus ==='delivered'){
+      order.completedAt = new Date();
+      order.status = 'done';
+    }
+    await order.save();
+
+
+    try {
+      const io = getIo();
+      if (io) io.emit('order:update', order);
+    } catch {}
+
+    return order;
+  }
+
+  static async updateOrderPayMethod(orderId, payMethod) {
+    const order = await Order.findByPk(orderId);
+    if (!order) throw new AppError(404, 'Order not found');
+    order.payMethod = payMethod;
+    await order.save();
+    try {
+      const io = getIo();
+      if (io) io.emit('order:update', order);
+    } catch {}
+    return order;
   }
 }
 
