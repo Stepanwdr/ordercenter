@@ -113,7 +113,7 @@ const statusLabels: Record<(typeof statuses)[number], string> = {
   done: 'Ավարտված',
 };
 
-const paymentMethods = ['CASH', 'ONLINE', 'BANK POS', 'IDRAM'] as const;
+const paymentMethods = ['CASH', 'ONLINE', 'BANK_POS', 'IDRAM'] as const;
 type PaymentMethod = (typeof paymentMethods)[number];
 
 const paymentOptions = paymentMethods.map((method) => ({ value: method, label: method }));
