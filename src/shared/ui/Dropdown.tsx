@@ -166,6 +166,9 @@ trigerDisabled
 
   const handleSelect = (option: DropdownOption) => {
     onChange(option.value);
+    if(value === option.value){
+      onChange('');
+    }
     setOpen(false);
   };
 

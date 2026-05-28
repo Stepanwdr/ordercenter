@@ -1,6 +1,5 @@
 import styled from 'styled-components';
-import { Button } from '@shared/ui/Button';
-
+import { useOrdersStatsQuery } from '@app/hooks/dataApi';
 const Grid = styled.div`
   display: grid;
   gap: 24px;
@@ -20,7 +19,7 @@ const Title = styled.h1`
   color: #f8fbff;
 `;
 
-const Metric = styled.p`
+const Count = styled.p`
   margin: 0;
   font-size: 2.2rem;
   font-weight: 700;
@@ -32,22 +31,22 @@ const Subtitle = styled.p`
 `;
 
  const DashboardPage = () => {
+  const { data: stats } = useOrdersStatsQuery();
   return (
     <div>
       <Title>Dispatch overview</Title>
       <Grid>
         <Card>
           <Subtitle>Active orders</Subtitle>
+          <Count>{stats?.active ?? 0}</Count>
         </Card>
         <Card>
-          <Subtitle>Pending jobs</Subtitle>
+          <Subtitle>Completed orders</Subtitle>
+          <Count>{stats?.completed ?? 0}</Count>
         </Card>
         <Card>
-          <Subtitle>Today revenue</Subtitle>
-        </Card>
-        <Card>
-          <Subtitle>Workflow</Subtitle>
-          <Button>Review orders</Button>
+          <Subtitle>Total orders</Subtitle>
+          <Count>{stats?.total ?? 0}</Count>
         </Card>
       </Grid>
     </div>

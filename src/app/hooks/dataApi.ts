@@ -37,14 +37,38 @@ interface CreateCourierPayload {
 
 interface UpdateCourierPayload extends CreateCourierPayload {
 }
+export interface query {
+  page?:number,
+  limit?:number,
+  sortBy?: 'createdAt',
+  sortOrder?: 'DESC' | 'ASC'  ,
+  status?:string,
+  search?:string,
+  courierId?:string,
+  restaurantId?:string
+}
 
-export const useOrdersQuery = () =>
-  useQuery<Order[]>({
-    queryKey: ['orders'],
+export const useOrdersQuery = (query:query) =>{
+
+ return useQuery<Order[]>({
+    queryKey: ['orders',query],
     queryFn: async () => {
-      const res = await api.get<{data:Order[]}>('/orders');
+      const res = await api.get<{ data: Order[] }>('/orders', {
+        params: query,
+      });
       return res.data.data;
     },
+  });
+}
+
+export const useOrdersStatsQuery = () =>
+  useQuery<{ active: number; completed: number; total: number }>({
+    queryKey: ['orders-stats'],
+    queryFn: async () => {
+      const res = await api.get<{ data: { active: number; completed: number; total: number } }>('/orders/stats');
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
   });
 
 export const useRestaurantsQuery = () =>

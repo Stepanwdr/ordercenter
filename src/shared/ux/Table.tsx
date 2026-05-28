@@ -1,4 +1,4 @@
-import {type Column, DataGrid} from 'react-data-grid';
+import {type Column, DataGrid, type SortColumn} from 'react-data-grid';
 import {useEffect, useState} from 'react';
 import styled from 'styled-components';
 
@@ -76,6 +76,9 @@ interface TableProps<R> {
   className?: string;
   onColumnsReorder?: (sourceKey: string, targetKey: string) => void;
   onColumnResize?: (column: Column<R>, width: number) => void;
+
+  sortColumns?: readonly SortColumn[];
+  onSortColumnsChange?: (sortColumns: SortColumn[]) => void;
 }
 
 export const Table = <R extends object = Row>({
@@ -84,6 +87,8 @@ export const Table = <R extends object = Row>({
   className,
   onColumnsReorder,
   onColumnResize,
+  sortColumns,
+  onSortColumnsChange
 }: TableProps<R>) => {
   const [columnState, setColumnState] = useState<readonly Column<R>[]>(
     columns ?? (defaultColumns as unknown as readonly Column<R>[])
@@ -129,6 +134,8 @@ export const Table = <R extends object = Row>({
         onColumnsReorder={handleColumnsReorder}
         onColumnResize={handleColumnResize}
         className={'data-grid'}
+        sortColumns={sortColumns}
+        onSortColumnsChange={onSortColumnsChange}
       />
     </GridWrapper>
   );

@@ -5,7 +5,7 @@ import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
 import {CreateOrderFlow} from '@features/create-order/CreateOrderFlow.tsx';
 import { Table } from '@shared/ux/Table';
-import type { Column } from 'react-data-grid';
+import type {Column, SortColumn} from 'react-data-grid';
 import type {Courier, CourierStatus, Order, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
@@ -13,6 +13,7 @@ import {useCouriersQuery, useOrdersQuery, useAssignCourierMutation, useUpdateOrd
 import { toast } from 'react-toastify';
 import {courierLocationOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
 import {formatTime,getDuration} from "@shared/utils/date.ts";
+import { useDebounce } from '@shared/utils/useDebounce.ts';
 import CouriersPage from "@pages/couriers/CouriersPage.tsx";
 
 const Header = styled.div`
@@ -39,7 +40,14 @@ const Controls = styled.div`
     gap: 16px;
     align-items: center;
 `;
-
+const Label = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
+`;
 const StatusTabs = styled.div`
     display: flex;
     gap: 10px;
@@ -113,7 +121,7 @@ const statusLabels: Record<(typeof statuses)[number], string> = {
   done: 'Ավարտված',
 };
 
-const paymentMethods = ['CASH', 'ONLINE', 'BANK_POS', 'IDRAM'] as const;
+const paymentMethods = ['CASH', 'ONLINE', 'BANK-POS', 'IDRAM'] as const;
 type PaymentMethod = (typeof paymentMethods)[number];
 
 const paymentOptions = paymentMethods.map((method) => ({ value: method, label: method }));
@@ -128,7 +136,7 @@ const orderStatusOptions: { value: OrderStatus; label: string }[] = [
 ];
 
 const OrdersPage = () => {
-  const { data: apiOrders } = useOrdersQuery();
+  const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [isOpenCouriersDialog,setOpenCouriersDialog]=useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -137,7 +145,10 @@ const OrdersPage = () => {
   const [selectedCourier, setSelectedCourier] = useState('all');
   const [selectedOrder,setSelectedOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const debouncedSearch = useDebounce(search, 500);
   const { data: couriersResponse } = useCouriersQuery();
+  const { data: apiOrders } = useOrdersQuery({courierId,status: activeStatus, search: debouncedSearch});
+
   const allCouriers = couriersResponse?.data ?? [];
   // Filter couriers by selected restaurant if present
   const courierOptions = allCouriers
@@ -155,6 +166,30 @@ const OrdersPage = () => {
   //   [orders]
   // );
   const couriers = [] as Courier[];
+
+  const sortedOrders = useMemo(() => {
+    if (sortColumns.length === 0) return orders;
+
+    const { columnKey, direction } = sortColumns[0];
+
+    return [...orders].sort((a: any, b: any) => {
+      const aValue = a[columnKey];
+      const bValue = b[columnKey];
+
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+
+      if (aValue < bValue) {
+        return direction === 'ASC' ? -1 : 1;
+      }
+
+      if (aValue > bValue) {
+        return direction === 'ASC' ? 1 : -1;
+      }
+
+      return 0;
+    });
+  }, [orders, sortColumns]);
   const updateOrderPayMethodMutation = useUpdateOrderPayMethodMutation();
 
   const handlePaidMethodChange = useCallback(async (id: string, value: PaymentMethod) => {
@@ -170,6 +205,12 @@ const OrdersPage = () => {
   const assignCourierMutation = useAssignCourierMutation();
   const updateOrderCourierStatusMutation = useUpdateOrderCourierStatusMutation();
   const updateOrderStatusMutation = useUpdateOrderStatusMutation();
+  const totalPages = Math.max(1, Math.ceil(sortedOrders.length / pageSize));
+
+  const pageRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedOrders.slice(start, start + pageSize);
+  }, [currentPage, sortedOrders]);
 
   const handleOrderStatusChange = useCallback(
     async (id: string, value: OrderStatus) => {
@@ -202,33 +243,49 @@ const OrdersPage = () => {
       toast.error(err?.message || 'Անհաջող հանձնարարություն');
     }
   };
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const filteredOrders = useMemo(
+    () =>
+      (orders).filter((order) => {
+        const query = search.toLowerCase().trim();
+        const matchesSearch =
+          query === '' ||
+          [order.orderCode, order.customerName, order.restaurant, order.courierProfile].join(' ').toLowerCase().includes(query);
+
+        const matchesStatus = activeStatus === 'all' || order?.status === activeStatus;
+        const matchesCourier = selectedCourier === 'all' || order.courierProfile.id === selectedCourier;
+
+        return matchesSearch && matchesStatus && matchesCourier;
+      }),
+    [orders, search, activeStatus, selectedCourier]
+  );
 
   const columns = useMemo<Column<Order>[]>(
     () => [
-      { key: 'code', name: 'Կոդ', resizable: true, draggable: true},
-      { key: 'orderDuration', name: 'Պատվերի տևողությունը', resizable: true, draggable: true,renderCell:({row})=> <Button style={{minHeight:"30px",width:"100%"}}>{getDuration(row.createdAt,row.completedAt)}</Button> },
-      { key: 'customerName', name: 'Հաճախորդ', resizable: true, draggable: true },
-      { key: 'customerPhone', name: 'Հաճախորդի հեռ․', resizable: true, draggable: true },
-      { key: 'completedAt', name: 'Պատվերն ավարտվել է', resizable: true, draggable: true ,
+      { key: 'code', name: 'Կոդ', resizable: true, draggable: true,  sortable: true},
+      { key: 'orderDuration',  sortable: true, name: 'Պատվերի տևողությունը', resizable: true, draggable: true,renderCell:({row})=> <Button style={{minHeight:"30px",width:"100%"}}>{getDuration(row.createdAt,row.completedAt)}</Button> },
+      { key: 'customerName', name: 'Հաճախորդ',  sortable: true, resizable: true, draggable: true },
+      { key: 'customerPhone', name: 'Հաճախորդի հեռ․',  sortable: true, resizable: true, draggable: true },
+      { key: 'completedAt', name: 'Պատվերն ավարտվել է',  sortable: true, resizable: true, draggable: true ,
         renderCell:({ row }: { row: Order })=>formatTime(row.completedAt)},
-      { key: 'orderTime', name: 'Գրանցման ամսաթիվը', resizable: true, draggable: true,
+      { key: 'orderTime', name: 'Գրանցման ամսաթիվը',  sortable: true, resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
           return formatTime(row.createdAt)
         }, },
-      { key: 'prepTime', name: 'Տրման Ժամը', resizable: true, draggable: true,
+      { key: 'prepTime', name: 'Տրման Ժամը', resizable: true, draggable: true,  sortable: true,
         renderCell: ({ row }: { row: Order }) => {
           return row?.prepTime || 'Անմիջապես';
         },
       },
-      { key: 'restaurant', name: 'Ռեստորան', resizable: true, draggable: true,
+      { key: 'restaurant', name: 'Ռեստորան', resizable: true, draggable: true,  sortable: true,
         renderCell: ({ row }: { row: Order }) => {
           return row?.restaurant?.name;
         },
       },
-      { key: 'courierRestaurantAt', name: 'Առաքիչը հասել է ռեստորան', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierRestaurantAt) },
-      { key: 'courierDeliveredAt', name: 'Առաքիչը առաքումը ավարտել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierDeliveredAt) },
-      { key: 'courierPickedUpAt', name: 'Առաքիչը պատվերը վերցրել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierPickedUpAt) },
-      { key: 'courierInRouteAt', name: 'Առաքիչը ճանապարհին է եղել', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierInRouteAt) },
+      { key: 'courierRestaurantAt',  sortable: true, name: 'Առաքիչը հասել է ռեստորան', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierRestaurantAt) },
+      { key: 'courierDeliveredAt',   sortable: true,name: 'Առաքիչը առաքումը ավարտել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierDeliveredAt) },
+      { key: 'courierPickedUpAt',   sortable: true,name: 'Առաքիչը պատվերը վերցրել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierPickedUpAt) },
+      { key: 'courierInRouteAt',   sortable: true,name: 'Առաքիչը ճանապարհին է եղել', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierInRouteAt) },
       { key: 'courier', name: 'Առաքիչ', resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
           return row?.courierProfile?.user?.name ?? <Button style={{minHeight:"25px"}} variant={'primary'} onClick={()=>{
@@ -309,24 +366,9 @@ const OrdersPage = () => {
             triggerDisplay="chip"
           />
         ),},
-      { key: 'price', name: 'Գումարը', resizable: true, draggable: true },
+      { key: 'price', name: 'Գումարը', resizable: true, draggable: true,  sortable: true },
     ],
     [handleCourierStatusChange, handleOrderStatusChange, handlePaidMethodChange]
-  );
-  const filteredOrders = useMemo(
-    () =>
-      (orders).filter((order) => {
-        const query = search.toLowerCase().trim();
-        const matchesSearch =
-          query === '' ||
-          [order.orderCode, order.customerName, order.restaurant, order.courierProfile].join(' ').toLowerCase().includes(query);
-
-        const matchesStatus = activeStatus === 'all' || order?.status === activeStatus;
-        const matchesCourier = selectedCourier === 'all' || order.courierProfile.id === selectedCourier;
-
-        return matchesSearch && matchesStatus && matchesCourier;
-      }),
-    [orders, search, activeStatus, selectedCourier]
   );
 
   useEffect(() => {
@@ -334,12 +376,6 @@ const OrdersPage = () => {
     setCurrentPage(1);
   }, [search, activeStatus, selectedCourier]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
-
-  const pageRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredOrders.slice(start, start + pageSize);
-  }, [currentPage, filteredOrders]);
 
   return (
     <div>
@@ -353,10 +389,14 @@ const OrdersPage = () => {
       </Header>
       <Toolbar>
         <Controls>
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
+          <div>
+            <Label>Որոնել</Label>
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
+          </div>
+
           <Dropdown label={'Առաքիչ'} value={courierId} options={courierOptions} placeholder="Ընտրել առաքիչ" onChange={setCourierId} />
         </Controls>
         <ControlsRow>
@@ -378,7 +418,7 @@ const OrdersPage = () => {
       </StatusTabs>
 
       <TableSection>
-        <Table<Order> rows={pageRows} columns={columns} className={'orders-table'} />
+        <Table<Order> rows={pageRows} columns={columns} className={'orders-table'} sortColumns={sortColumns} onSortColumnsChange={setSortColumns} />
         <Pagination currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
       </TableSection>
 
