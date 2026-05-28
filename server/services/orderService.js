@@ -22,9 +22,14 @@ class OrderService {
 
     const safeSortBy = ORDER_SORTABLE_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
     const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-
     const where = {};
-    if (status && status !== 'all') where.status = status;
+    if (status && status !== 'all') {
+      if (status === 'new') {
+        where.courierId = { [Op.is]: null };
+      } else {
+        where.status = status;
+      }
+    }
     if (courierId) where.courierId = courierId;
     if (restaurantId) where.restaurantId = restaurantId;
     if (search) {
@@ -33,9 +38,9 @@ class OrderService {
         { customerName: { [Op.like]: `%${search}%` } },
         { customerPhone: { [Op.like]: `%${search}%` } },
         { deliveryAddress: { [Op.like]: `%${search}%` } },
+        { courierName: { [Op.like]: `%${search}%` } },
       ];
     }
-
     const offset = (Number(page) - 1) * Number(limit);
 
     const { count, rows } = await Order.findAndCountAll({
@@ -88,6 +93,15 @@ class OrderService {
         totalPages: Math.ceil(count / Number(limit)),
       },
     };
+  }
+
+  static async getStats() {
+    const [active, completed, total] = await Promise.all([
+      Order.count({ where: { status: { [Op.notIn]: ['done', 'completed', 'cancelled'] } } }),
+      Order.count({ where: { status: ['done', 'completed'] } }),
+      Order.count(),
+    ]);
+    return { active, completed, total };
   }
 
   static async createOrder(payload, authUser) {
@@ -210,6 +224,7 @@ class OrderService {
       }
 
       order.courierId = courierId;
+      order.courierName = courierUser.name;
       if (order.status === 'pending') {
         order.status = 'accepted';
       }
@@ -220,7 +235,6 @@ class OrderService {
         order.save({ transaction }),
         courierProfile.save({ transaction }),
       ]);
-      console.log(order);
       // Notify courier via telegram about assignment
       try {
         if (courierProfile && courierProfile.telegramId) {

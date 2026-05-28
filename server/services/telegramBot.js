@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { Courier } from '../models/index.js';
+import {Op} from "sequelize";
 
 let botInstance = null;
 
@@ -10,13 +11,11 @@ export const handleUpdate = async (update) => {
     const match = text.match(/\/start\s*(.*)?/);
     const payload = match && match[1] ? match[1].trim() : null;
     const chatId = String(msg.chat.id);
-    console.log({msg})
     if (!payload) {
       if (botInstance) await botInstance.sendMessage(chatId, 'Ողջույն — ուղարկեք ուղեցույցը։');
       return { ok: false };
     }
 
-    const { Op } = await import('sequelize');
     const courier = await Courier.findOne({
       where: {
         telegram_link_token: payload,

@@ -9,6 +9,11 @@ class OrdersController {
     });
   };
 
+  static stats = async (req, res) => {
+    const stats = await OrderService.getStats();
+    res.json({ success: true, data: stats });
+  };
+
   static create = async (req, res) => {
     const order = await OrderService.createOrder(req.validated, req.auth);
     res.status(201).json({

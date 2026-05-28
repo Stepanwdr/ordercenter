@@ -8,6 +8,7 @@ import { schemas } from '../utils/validators.js';
 const router = express.Router({ mergeParams: true });
 
 router.get('/', asyncHandler(OrdersController.list));
+router.get('/stats', asyncHandler(OrdersController.stats));
 router.post('/', authorizeRole('admin', 'customer', 'operator'), validate(schemas.createOrder), asyncHandler(OrdersController.create));
 router.put('/:id/assign-courier', authorizeRole('admin', 'operator','dispatcher'), validate(schemas.assignCourier), asyncHandler(OrdersController.assignCourier));
 router.put('/:id/status', authorizeRole('admin', 'operator', 'courier'), validate(schemas.updateOrderStatus), asyncHandler(OrdersController.updateStatus));

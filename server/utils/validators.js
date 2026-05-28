@@ -5,7 +5,7 @@ export const courierStatuses= ['atRestaurant','pickedUp','enRoute','delivered','
 const courierStatusSchema = z.enum(courierStatuses);
 
 export const OrderPaymentMethod = ['CASH' , 'ONLINE' , 'BANK-POS' , 'IDRAM'];
-export const OrderStatus = ['pending','done','cooking','ready','picked_up','delivering','completed','cancelled','enRoute'];
+export const OrderStatus = ['pending','accepted','done','cooking','ready','picked_up','delivering','completed','cancelled','enRoute'];
 const orderStatusSchema = z.enum(OrderStatus);
 
 export const schemas = {

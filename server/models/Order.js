@@ -52,6 +52,10 @@ Order.init(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    courierName: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     orderType: {
       type: DataTypes.ENUM('dine_in','takeaway','delivery'),
       allowNull: true,
