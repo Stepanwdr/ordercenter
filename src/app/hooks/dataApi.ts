@@ -154,10 +154,10 @@ export const useCouriersQuery = () => {
   });
 };
 export const useCourierQuery = (id: string) => {
-  return useQuery<{ data: Courier[] }>({
+  return useQuery<{ data: Courier }>({
     queryKey: ['couriers'],
     queryFn: async () => {
-      const res = await api.get<{ data: Courier[] }>(`/couriers/${id}`);
+      const res = await api.get<{ data: Courier}>(`/couriers/${id}`);
       return res.data;
     },
   });
