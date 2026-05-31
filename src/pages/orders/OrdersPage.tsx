@@ -9,7 +9,15 @@ import type {Column, SortColumn} from 'react-data-grid';
 import type {Courier, CourierStatus, Order, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
-import {useCouriersQuery, useOrdersQuery, useAssignCourierMutation, useUpdateOrderCourierStatusMutation, useUpdateOrderStatusMutation, useUpdateOrderPayMethodMutation} from '@app/hooks/dataApi';
+import {
+  useCouriersQuery,
+  useOrdersQuery,
+  useAssignCourierMutation,
+  useUpdateOrderCourierStatusMutation,
+  useUpdateOrderStatusMutation,
+  useUpdateOrderPayMethodMutation,
+  useGetMe
+} from '@app/hooks/dataApi';
 import { toast } from 'react-toastify';
 import {courierLocationOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
 import {formatTime,getDuration} from "@shared/utils/date.ts";
@@ -136,6 +144,7 @@ const orderStatusOptions: { value: OrderStatus; label: string }[] = [
 ];
 
 const OrdersPage = () => {
+  const {data:meData} = useGetMe()
   const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [isOpenCouriersDialog,setOpenCouriersDialog]=useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
