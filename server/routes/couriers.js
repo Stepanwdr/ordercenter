@@ -14,7 +14,7 @@ router.get('/:id', asyncHandler(CouriersController.get));
 // Create
 router.post('/', authorizeRole('admin', 'operator'), validate(schemas.createCourier), asyncHandler(CouriersController.create));
 // Update
-router.put('/:id', authorizeRole('admin', 'operator'), validate(schemas.updateCourier), asyncHandler(CouriersController.update));
+router.put('/:id', authorizeRole('admin', 'operator', 'courier'), validate(schemas.updateCourier), asyncHandler(CouriersController.update));
 // Delete
 router.delete('/:id', authorizeRole('admin'), asyncHandler(CouriersController.delete));
 

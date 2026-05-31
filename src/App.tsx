@@ -1,11 +1,11 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import styled from 'styled-components';
 import { PrivateRoutes } from './routes/PrivateRoutes';
-// import { ProfilePage } from '@pages/profile/ProfilePage';
 import { PublicRoutes } from './routes/PublicRoutes';
 import { Sidebar } from '@shared/ui/Sidebar';
 import 'react-data-grid/lib/styles.css';
 import {lazy} from "react";
+import { useAuth } from "./app/providers/AuthProvider";
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
 const OrdersPage = lazy(() => import('@pages/orders/OrdersPage'));
 const CouriersPage = lazy(() => import('@pages/couriers/CouriersPage'));
@@ -16,6 +16,7 @@ const SettingsPage = lazy(() => import('@pages/settings/SettingsPage'));
 const LoginPage = lazy(() => import('@pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@pages/auth/RegisterPage'));
 const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
+const CourierDashboard = lazy(() => import('@pages/courier/CourierDashboard'));
 
 const AppShell = styled.div`
   position: relative;
@@ -60,6 +61,9 @@ const PrivateLayout = () => {
 };
 
 export function App() {
+  const { user } = useAuth();
+  const isCourier = user?.role === 'courier';
+
   return (
     <Routes>
       <Route element={<PublicRoutes />}>
@@ -68,6 +72,15 @@ export function App() {
       </Route>
 
       <Route path="/courier-app" element={<CourierApp />} />
+
+      {isCourier && (
+        <Route element={<PrivateRoutes />}>
+          <Route path="/" element={<CourierDashboard />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/couriers" element={<CouriersPage />} />
+          <Route path="/couriers/:id" element={<CourierPage />} />
+        </Route>
+      )}
 
       <Route element={<PrivateRoutes />}>
         <Route element={<PrivateLayout />}>

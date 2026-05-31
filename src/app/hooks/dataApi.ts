@@ -178,11 +178,11 @@ export const useMenuItemsQuery = (menuId: string | null) => {
 };
 
 // Courier-specific data hooks
-export const useCourierQuery = (id: string | null) => {
+export const useGetMe = () => {
   return useQuery<{ data: Courier }>({
-    queryKey: ['courier', id],
+    queryKey: ['courier', 'me'],
     queryFn: async () => {
-      const res = await api.get<{ data: Courier}>(`/couriers/${id}`);
+      const res = await api.get<{ data: Courier}>('/couriers/me');
       return res.data;
     },
   });
@@ -280,14 +280,14 @@ export const useUpdateCourierMutation = (successCb:()=>void) => {
   });
 };
 
-export const useUpdateCourierStatusMutation = () => {
+export const useUpdateMyStatusMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationKey: ['update-courier-status'],
-    mutationFn: async ({ id, status, orderId }: { id: string; status: Courier['status']; orderId?: string }) =>
-      api.put<{ data: Courier }>(`/couriers/${id}/status`, { status, orderId }),
+    mutationKey: ['update-my-status'],
+    mutationFn: async ({ status, orderId }: { status: Courier['status']; orderId?: string }) =>
+      api.put<{ data: Courier }>('/couriers/me/status', { status, orderId }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      await queryClient.invalidateQueries({ queryKey: ['courier'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
     },
   });

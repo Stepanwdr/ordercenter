@@ -6,8 +6,8 @@ export function initSocket(server) {
   if (io) return io;
   io = new Server(server, {
     cors: {
-      origin: ("" || '').split(',').map(s => s.trim()).filter(Boolean).concat(['http://localhost:5173','http://localhost:5174','http://localhost:3000']),
-      methods: ['GET','POST','PATCH']
+      origin: ("" || '').split(',').map(s => s.trim()).filter(Boolean).concat(['http://localhost:5173','http://localhost:5174','http://localhost:3000','https://deliverydepartment.am']),
+      methods: ['GET','POST','PUT','PATCH'],
     }
   });
 

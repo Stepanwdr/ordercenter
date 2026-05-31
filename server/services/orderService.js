@@ -2,9 +2,9 @@ import { Op } from 'sequelize';
 import { Courier, Order, Restaurant, User, OrderItem, MenuItem, Menu, sequelize } from '../models/index.js';
 import telegramService from './telegramService.js';
 import AppError from '../utils/AppError.js';
-import {canTransitionOrderStatus, statusFieldMap} from '../utils/orderFlow.js';
+import { statusFieldMap } from '../utils/orderFlow.js';
 import { getIo } from './socket.js';
-const generateCode=()=>{
+const generateCode=()=> {
   const now = new Date();
 
   const pad = (n) => n.toString().padStart(2, '0');
@@ -246,7 +246,6 @@ class OrderService {
         // eslint-disable-next-line no-console
         console.error('Telegram notify on assign failed', err?.message || err);
       }
-
       // emit socket event about assignment
       try {
         const io = getIo();

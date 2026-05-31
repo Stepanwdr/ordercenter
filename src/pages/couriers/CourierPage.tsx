@@ -1,10 +1,16 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
+import { Input } from '@shared/ui/Input';
+import { Dropdown } from '@shared/ui/Dropdown';
 import { StatusBadge } from '@shared/ui/StatusBadge';
-import { useCourierQuery } from '@app/hooks/dataApi';
-import type {Courier} from "@shared/types";
+import { useCourierQuery, useUpdateCourierMutation, useUpdateOrderStatusMutation } from '@app/hooks/dataApi';
+import { courierLocationOptions } from '@features/select-courier-status/SelectCourierStatus';
+import { api } from '@shared/api/base';
+import type { Courier, Order, OrderStatus } from '@shared/types';
+import { toast } from 'react-toastify';
+import { formatTime } from '@shared/utils/date';
 
 const PageRoot = styled.main`
   padding: 32px;
@@ -23,142 +29,279 @@ const Header = styled.div`
 
 const TitleGroup = styled.div`
   display: grid;
-  gap: 12px;
+  gap: 8px;
 `;
 
 const Title = styled.h1`
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.8rem;
 `;
 
 const Subtitle = styled.p`
   margin: 0;
-  color: rgba(255, 255, 255, 0.72);
-  max-width: 620px;
+  color: rgba(255, 255, 255, 0.6);
 `;
 
-const InfoGrid = styled.div`
+const Tabs = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0;
+`;
+
+const Tab = styled.button<{ $active: boolean }>`
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: ${({ $active }) => ($active ? '#fff' : 'rgba(255,255,255,0.5)')};
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 2px solid ${({ $active }) => ($active ? '#4f8fff' : 'transparent')};
+  transition: all 0.15s;
+  &:hover { color: #fff; }
+`;
+
+const Card = styled.div`
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+`;
+
+const InfoRow = styled.div`
   display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  @media (max-width: 840px) {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  align-items: center;
+  &:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); }
 `;
 
-const InfoCard = styled.section`
-  padding: 28px;
-  border-radius: 24px;
-  background: rgba(18, 24, 44, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.14);
+const Label = styled.span`
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
 `;
 
-const CardTitle = styled.h2`
-  margin: 0 0 16px;
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.8);
+const Value = styled.span`
+  font-weight: 500;
 `;
 
-const CardValue = styled.p`
-  margin: 0;
-  font-size: 1.2rem;
-  line-height: 1.7;
-`;
-
-const Section = styled.div`
+const FormField = styled.div`
   display: grid;
-  gap: 20px;
+  gap: 6px;
+  margin-bottom: 16px;
 `;
 
-const SectionTitle = styled.h3`
-  margin: 0;
-  font-size: 1.1rem;
+const OrderCard = styled.div`
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
 `;
 
-const SectionText = styled.p`
-  margin: 0;
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.75;
+const OrderHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 `;
 
-const BackButton = styled(Button)`
-  min-width: 160px;
+const OrderCode = styled.span`
+  font-weight: 700;
+  font-size: 15px;
 `;
 
- const CourierPage = () => {
+const OrderMeta = styled.div`
+  font-size: 13px;
+  opacity: 0.6;
+  line-height: 1.6;
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+`;
+
+const EmptyBlock = styled.div`
+  text-align: center;
+  padding: 40px;
+  opacity: 0.5;
+`;
+
+const statusLabels: Record<string, string> = {
+  pending: 'Pending', accepted: 'Accepted', cooking: 'Cooking',
+  ready: 'Ready', delivering: 'Delivering', done: 'Done', completed: 'Completed',
+};
+
+type TabKey = 'profile' | 'orders' | 'history' | 'edit';
+
+export default function CourierPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: courierApi, isPending } = useCourierQuery(id ?? null);
+  const { data: courierApi, isPending, refetch } = useCourierQuery(id ?? null);
+  const updateOrderStatus = useUpdateOrderStatusMutation();
+  const updateCourier = useUpdateCourierMutation(() => { refetch(); toast.success('Profile updated'); });
 
-  if (isPending) {
-    return <PageRoot>
-      <Title>Բեռնվում է</Title>
-    </PageRoot>
-  }
+  const [tab, setTab] = useState<TabKey>('profile');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', status: '' as Courier['status'], restaurantId: '' });
 
+  const courier: Courier | null = courierApi?.data ?? null;
+  const activeOrders = orders.filter((o) => !['done', 'completed', 'cancelled'].includes(o.status));
+  const completedOrders = orders.filter((o) => ['done', 'completed'].includes(o.status));
 
-  if (!courierApi?.data) {
-    return (
-      <PageRoot>
-        <Title>Courier not found</Title>
-      </PageRoot>
-    );
-  }
+  useEffect(() => {
+    if (!id) return;
+    api.get<{ data: Order[] }>(`/orders?courierId=${id}&limit=50`).then((res) => {
+      if (res.data?.data) setOrders(res.data.data);
+    }).catch(() => {});
+  }, [id]);
 
-  const data = courierApi?.data ?? ({} as Courier);
-  const hasActiveOrder = data?.status === "free";
-  // const statusLabel = courier.status === 'delivering' ? 'Առաքվում են' : courier.status === 'idle' ? 'Հանգստացածը' : 'Անցանց';
+  useEffect(() => {
+    if (courier) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditForm({
+        name: courier.user?.name || '',
+        phone: courier.user?.phone || '',
+        email: courier.user?.email || '',
+        status: courier.status,
+        restaurantId: courier.restaurant?.id || '',
+      });
+    }
+  }, [courier]);
+
+  if (isPending) return <PageRoot><Title>Loading...</Title></PageRoot>;
+  if (!courier) return <PageRoot><Title>Courier not found</Title></PageRoot>;
+
+  const handleStatusUpdate = async (orderId: string, status: string) => {
+    try {
+      await updateOrderStatus.mutateAsync({ id: orderId, status });
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: status as OrderStatus } : o)));
+      toast.success('Order status updated');
+    } catch { toast.error('Failed to update status'); }
+  };
 
   return (
     <PageRoot>
       <Header>
         <TitleGroup>
-          <Title>{data?.user?.name}</Title>
-          <Subtitle>Полная карточка курьера с текущим статусом, контактами и последней информацией о доставке.</Subtitle>
+          <Title>{courier.user?.name}</Title>
+          <Subtitle>Courier profile and order management</Subtitle>
         </TitleGroup>
-        <div>
-          <StatusBadge status={data?.status} />
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <StatusBadge status={courier.status} />
+          <Button variant="secondary" onClick={() => navigate('/couriers')}>Back</Button>
         </div>
       </Header>
 
-      <InfoGrid>
-        <InfoCard>
-          <CardTitle>Контактный телефон</CardTitle>
-          <CardValue>{data?.user?.phone}</CardValue>
-        </InfoCard>
-        {data?.restaurant?.name && (
-          <InfoCard>
-            <CardTitle>Ресторан</CardTitle>
-            <CardValue>{data?.restaurant?.name}</CardValue>
-          </InfoCard>
-        )}
-        <InfoCard>
-          <CardTitle>Текущий заказ</CardTitle>
-          {/*<CardValue>{((data.currentOrders.map(o =>o.status))) ?? 'Нет активного заказа'}</CardValue>*/}
-        </InfoCard>
-        <InfoCard>
-          <CardTitle>Расположение</CardTitle>
-          {/*<CardValue>*/}
-          {/*  {typeof courier?.lat === 'number' && typeof courier?.lng === 'number'*/}
-          {/*    ? `${Number(courier.lat).toFixed(4)}, ${Number(courier.lng).toFixed(4)}`*/}
-          {/*    : 'Не доступно'}*/}
-          {/*</CardValue>*/}
-        </InfoCard>
-      </InfoGrid>
+      <Tabs>
+        <Tab $active={tab === 'profile'} onClick={() => setTab('profile')}>Profile</Tab>
+        <Tab $active={tab === 'orders'} onClick={() => setTab('orders')}>Active orders ({activeOrders.length})</Tab>
+        <Tab $active={tab === 'history'} onClick={() => setTab('history')}>History ({completedOrders.length})</Tab>
+        <Tab $active={tab === 'edit'} onClick={() => setTab('edit')}>Edit</Tab>
+      </Tabs>
 
-        <Section>
-          <SectionTitle>Детали</SectionTitle>
-          <SectionText>
-          {hasActiveOrder
-            ? 'Курьер активно доставляет заказ. Поддерживайте связь через систему и отслеживайте время доставки.'
-            : 'Курьер свободен и готов к новым заданиям. Вы можете изменить его статус или назначить новый заказ.'}
-          </SectionText>
-        <BackButton variant="secondary" onClick={() => navigate('/couriers')}>
-          Հետ առաքիչների ցուցակը
-        </BackButton>
-      </Section>
+      {tab === 'profile' && (
+        <>
+          <Card>
+            <InfoRow><Label>Phone</Label><Value>{courier.user?.phone || '—'}</Value></InfoRow>
+            <InfoRow><Label>Email</Label><Value>{courier.user?.email || '—'}</Value></InfoRow>
+            <InfoRow><Label>Restaurant</Label><Value>{courier.restaurant?.name || '—'}</Value></InfoRow>
+            {/*<InfoRow><Label>Telegram ID</Label><Value>{courier.telegramId || 'Not connected'}</Value></InfoRow>*/}
+            {/*<InfoRow><Label>Location</Label><Value>{courier.lat && courier.lng ? `${Number(courier.lat).toFixed(4)}, ${Number(courier.lng).toFixed(4)}` : '—'}</Value></InfoRow>*/}
+          </Card>
+          <Card>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Active orders: {activeOrders.length}</div>
+            <div style={{ opacity: 0.6, fontSize: 13 }}>Completed orders: {completedOrders.length}</div>
+          </Card>
+        </>
+      )}
+
+      {tab === 'orders' && (
+        <>
+          {activeOrders.length === 0 && <EmptyBlock>No active orders</EmptyBlock>}
+          {activeOrders.map((order) => (
+            <OrderCard key={order.id}>
+              <OrderHeader>
+                <OrderCode>#{order.code}</OrderCode>
+                <StatusBadge status={order.status} />
+              </OrderHeader>
+              <OrderMeta>
+                <div>🏪 {order.restaurant?.name}</div>
+                <div>👤 {order.customerName || '—'} — 📞 {order.customerPhone || '—'}</div>
+                <div>📍 {order.deliveryAddress || '—'}</div>
+                <div>💰 ${order.price?.toFixed(2)}</div>
+              </OrderMeta>
+              <Actions>
+                {['cooking', 'ready', 'delivering', 'done'].map((s) => (
+                  <Button key={s} variant="secondary" style={{ fontSize: 12, padding: '6px 12px', minHeight: 0 }}
+                    onClick={() => handleStatusUpdate(order.id, s)}
+                    disabled={!['pending', 'accepted', 'cooking', 'ready', 'delivering'].includes(order.status)}
+                  >
+                    {statusLabels[s] || s}
+                  </Button>
+                ))}
+              </Actions>
+            </OrderCard>
+          ))}
+        </>
+      )}
+
+      {tab === 'history' && (
+        <>
+          {completedOrders.length === 0 && <EmptyBlock>No completed orders</EmptyBlock>}
+          {completedOrders.map((order) => (
+            <OrderCard key={order.id}>
+              <OrderHeader>
+                <OrderCode>#{order.code}</OrderCode>
+                <StatusBadge status={order.status} />
+              </OrderHeader>
+              <OrderMeta>
+                <div>🏪 {order.restaurant?.name}</div>
+                <div>💰 ${order.price?.toFixed(2)}</div>
+                <div>📅 {formatTime(order.createdAt)}</div>
+              </OrderMeta>
+            </OrderCard>
+          ))}
+        </>
+      )}
+
+      {tab === 'edit' && (
+        <Card>
+          <FormField>
+            <Label>Name</Label>
+            <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          </FormField>
+          <FormField>
+            <Label>Phone</Label>
+            <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+          </FormField>
+          <FormField>
+            <Label>Email</Label>
+            <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+          </FormField>
+          <FormField>
+            <Label>Status</Label>
+            <Dropdown
+              value={editForm.status}
+              options={courierLocationOptions}
+              onChange={(v) => setEditForm({ ...editForm, status: v as Courier['status'] })}
+              triggerDisplay="chip"
+            />
+          </FormField>
+          <Button
+            variant="primary"
+            onClick={() => updateCourier.mutateAsync({ id: id!, payload: editForm })}
+          >
+            Save
+          </Button>
+        </Card>
+      )}
     </PageRoot>
   );
-};
-export default CourierPage
+}

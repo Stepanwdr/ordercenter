@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import styled, { css, keyframes } from 'styled-components';
-import { useAuth } from '../../app/providers/AuthProvider';
+import {useAuth} from "@app/providers/AuthProvider.tsx";
 
 const expand = keyframes`
   from { width: 80px; }

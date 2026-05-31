@@ -8,11 +8,13 @@ import { schemas } from '../utils/validators.js';
 const router = express.Router();
 
 router.get('/', asyncHandler(CouriersController.list));
+router.get('/me', asyncHandler(CouriersController.getMe));
 router.get('/:id', asyncHandler(CouriersController.get));
 router.post('/', authorizeRole('admin', 'operator'), validate(schemas.createCourier), asyncHandler(CouriersController.create));
-router.put('/:id', authorizeRole('admin', 'operator'), validate(schemas.updateCourier), asyncHandler(CouriersController.update));
+router.put('/:id', authorizeRole('admin', 'operator', 'courier'), validate(schemas.updateCourier), asyncHandler(CouriersController.update));
 router.delete('/:id', authorizeRole('admin'), asyncHandler(CouriersController.delete));
 router.post('/:id/generate-telegram-link', authorizeRole('admin','operator'), asyncHandler(CouriersController.generateTelegramLink));
+router.put('/me/status', authorizeRole('courier'), validate(schemas.updateCourierStatus), asyncHandler(CouriersController.updateMyStatus));
 router.put('/:id/status', authorizeRole('admin', 'operator','dispatcher','courier'), validate(schemas.updateCourierStatus), asyncHandler(CouriersController.updateStatus));
 
 export default router;

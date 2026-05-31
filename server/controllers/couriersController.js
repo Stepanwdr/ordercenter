@@ -5,6 +5,12 @@ class CouriersController {
     res.json({ success: true, data: couriers });
   };
 
+  static getMe = async (req, res) => {
+    const courier = await CourierService.getCourier(req.auth.userId);
+    if (!courier) return res.status(404).json({ success: false, message: 'Courier not found' });
+    res.json({ success: true, data: courier });
+  };
+
   static get = async (req, res) => {
     const courier = await CourierService.getCourier(req.params.id);
     if (!courier) return res.status(404).json({ success: false, message: 'Courier not found' });
@@ -34,6 +40,12 @@ class CouriersController {
   static updateStatus = async (req, res) => {
     const { status, orderId } = req.validated;
     const courier = await CourierService.updateCourierStatus(req.params.id, status, orderId);
+    res.json({ success: true, data: courier });
+  };
+
+  static updateMyStatus = async (req, res) => {
+    const { status, orderId } = req.validated;
+    const courier = await CourierService.updateCourierStatus(req.auth.userId, status, orderId);
     res.json({ success: true, data: courier });
   };
 }
