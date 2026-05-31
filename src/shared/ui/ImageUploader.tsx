@@ -31,7 +31,6 @@ export const ImageUploader = ({ value, onChange, label }: Props) => {
       setLocalPreview(preview);
       onChange({ url, file });
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('Upload failed', e);
     }
   };
