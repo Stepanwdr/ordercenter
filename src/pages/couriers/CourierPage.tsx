@@ -5,7 +5,7 @@ import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
 import { StatusBadge } from '@shared/ui/StatusBadge';
-import {  useUpdateCourierMutation, useUpdateOrderStatusMutation } from '@app/hooks/dataApi';
+import {useCourierQuery, useUpdateCourierMutation, useUpdateOrderStatusMutation} from '@app/hooks/dataApi';
 import { courierLocationOptions } from '@features/select-courier-status/SelectCourierStatus';
 import { api } from '@shared/api/base';
 import type { Courier, Order, OrderStatus } from '@shared/types';
@@ -143,7 +143,7 @@ type TabKey = 'profile' | 'orders' | 'history' | 'edit';
 export default function CourierPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: courierApi, isPending, refetch } = {};
+  const { data: courierApi, isPending, refetch } = useCourierQuery(id ?? '');
   const updateOrderStatus = useUpdateOrderStatusMutation();
   const updateCourier = useUpdateCourierMutation(() => { refetch(); toast.success('Profile updated'); });
 
