@@ -112,26 +112,6 @@ export const useRestaurantsQuery = () =>
     },
   });
 
-// Create restaurant mutation
-// export const useCreateRestaurantMutation = () => {
-//   const queryClient = useQueryClient();
-//
-//   return useMutation<Restaurant, unknown, CreateRestaurantPayload | FormData>(
-//     async (payload) => {
-//       if (payload instanceof FormData) {
-//         const res = await api.post<{ data: Restaurant }>('/restaurants', payload, {
-//           headers: { 'Content-Type': 'multipart/form-data' },
-//         });
-//         return res.data.data;
-//       }
-//     },
-//     {
-//       onSuccess: async() => {
-//         await queryClient.invalidateQueries({queryKey:['restaurants']});
-//       },
-//     }
-//   );
-// };
 
 export const useCreateRestaurantMutation = () => {
   const queryClient = useQueryClient();
