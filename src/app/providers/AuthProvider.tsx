@@ -39,6 +39,7 @@ const saveRegisteredUsers = (users: RegisteredUser[]) => {
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -50,6 +51,16 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         localStorage.removeItem(AUTH_STORAGE_KEY);
       }
     }
+  }, []);
+
+  // The axios interceptor dispatches this when a request gets 401 (invalid/expired token).
+  useEffect(() => {
+    const handler = () => {
+      setUser(null);
+      setSessionExpired(true);
+    };
+    window.addEventListener('auth:session-expired', handler);
+    return () => window.removeEventListener('auth:session-expired', handler);
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -113,8 +124,73 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     [user]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const handleRelogin = () => {
+    setSessionExpired(false);
+    logout();
+    window.location.assign('/login');
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {sessionExpired && <SessionExpiredModal onRelogin={handleRelogin} />}
+    </AuthContext.Provider>
+  );
 };
+
+const SessionExpiredModal = ({ onRelogin }: { onRelogin: () => void }) => (
+  <div
+    role="dialog"
+    aria-modal="true"
+    style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 99999,
+      display: 'grid',
+      placeItems: 'center',
+      background: 'rgba(0, 0, 0, 0.6)',
+      backdropFilter: 'blur(2px)',
+      padding: 16,
+    }}
+  >
+    <div
+      style={{
+        width: '100%',
+        maxWidth: 360,
+        background: '#141824',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16,
+        padding: '28px 24px',
+        textAlign: 'center',
+        color: '#fff',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}
+    >
+      <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Նստաշրջանն ավարտվել է</div>
+      <div style={{ fontSize: 14, opacity: 0.65, lineHeight: 1.5, marginBottom: 22 }}>
+        Ձեր մուտքի ժամկետը լրացել է։ Շարունակելու համար մուտք գործեք կրկին։
+      </div>
+      <button
+        onClick={onRelogin}
+        style={{
+          width: '100%',
+          padding: 14,
+          border: 'none',
+          borderRadius: 12,
+          background: '#4f8fff',
+          color: '#fff',
+          fontSize: 15,
+          fontWeight: 700,
+          cursor: 'pointer',
+        }}
+      >
+        Մուտք գործել
+      </button>
+    </div>
+  </div>
+);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {

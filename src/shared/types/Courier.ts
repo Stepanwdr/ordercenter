@@ -12,4 +12,7 @@ export interface Courier extends User {
   orders?: Order[];
   user?: User;
   userId: string;
+  maxOrders?: number;
+  activeOrdersCount?: number;
+  availableSlots?: number;
 }

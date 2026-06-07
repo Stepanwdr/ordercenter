@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="hy">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Courier card — варианты дизайна</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #090b11;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 24px 16px 80px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { opacity: .5; font-size: 13px; margin-bottom: 28px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 28px;
+    align-items: start;
+  }
+  .variant { }
+  .variant > .vh {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 12px;
+  }
+  .vh .badge { font-size: 12px; font-weight: 800; color: #4f8fff;
+    background: rgba(79,143,255,.15); padding: 3px 10px; border-radius: 999px; }
+  .vh .name { font-size: 15px; font-weight: 700; }
+  .vh .desc { font-size: 12px; opacity: .5; margin: 0 0 14px; line-height: 1.5; }
+
+  /* ---- shared card base ---- */
+  .card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 16px;
+    padding: 16px;
+    max-width: 380px;
+  }
+  .code { font-weight: 800; font-size: 15px; letter-spacing: .2px; }
+  .muted { opacity: .55; }
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+  }
+  .c-purple { color:#a78bfa; background:rgba(139,92,246,.13); border:1px solid rgba(139,92,246,.33); }
+  .c-blue   { color:#4f8fff; background:rgba(79,143,255,.13); border:1px solid rgba(79,143,255,.33); }
+  .c-green  { color:#34d399; background:rgba(52,211,153,.13); border:1px solid rgba(52,211,153,.33); }
+  .c-amber  { color:#f59e0b; background:rgba(245,158,11,.13); border:1px solid rgba(245,158,11,.33); }
+  .c-red    { color:#ef4444; background:rgba(239,68,68,.13); border:1px solid rgba(239,68,68,.33); }
+  .c-gray   { color:rgba(255,255,255,.8); background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1); }
+  .phone { color:#4f8fff; font-weight:600; text-decoration:none; }
+  .divider { height:1px; background:rgba(255,255,255,.06); margin:12px 0; }
+  .btn {
+    border:none; border-radius:12px; font-weight:700; cursor:pointer;
+    color:#fff; padding:11px 14px; font-size:13px; background:#4f8fff;
+  }
+  .btn-ghost { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
+  .btn-block { display:block; width:100%; text-align:center; padding:13px; font-size:14px; }
+  .iconbtn {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    flex:1; padding:14px; border-radius:13px; font-weight:700; font-size:14px;
+    border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); color:#fff; cursor:pointer;
+  }
+
+  /* ===== A. Compact / scan-first ===== */
+  .A .toggle {
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06);
+    border-radius:10px; padding:10px 12px; margin:12px 0; font-size:13px; font-weight:600;
+  }
+  .A .footer { display:flex; gap:8px; }
+  .A .summary { font-size:13px; }
+  .A .summary b { font-size:15px; }
+
+  /* ===== B. Timeline stepper ===== */
+  .stepper { display:flex; align-items:flex-start; margin:14px 0 4px; }
+  .step { flex:1; text-align:center; position:relative; }
+  .step .dot {
+    width:14px; height:14px; border-radius:50%; margin:0 auto 6px;
+    background:rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.15);
+  }
+  .step.done .dot { background:#34d399; border-color:#34d399; }
+  .step.curr .dot { background:#4f8fff; border-color:#4f8fff; box-shadow:0 0 0 4px rgba(79,143,255,.2); }
+  .step .lbl { font-size:10px; opacity:.6; }
+  .step.curr .lbl { opacity:1; color:#4f8fff; font-weight:700; }
+  .step::before {
+    content:''; position:absolute; top:6px; left:-50%; width:100%; height:2px;
+    background:rgba(255,255,255,.12);
+  }
+  .step:first-child::before { display:none; }
+  .step.done::before, .step.curr::before { background:#34d399; }
+
+  /* ===== C. Map-first ===== */
+  .C .addr-big { font-size:16px; font-weight:700; line-height:1.35; }
+  .C .addr-sub { font-size:12px; opacity:.55; margin-top:3px; }
+  .C .ctas { display:flex; gap:10px; margin:14px 0; }
+  .C .meta { display:flex; gap:14px; font-size:13px; }
+  .C .footerbar {
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(79,143,255,.08); border-radius:10px; padding:10px 12px; font-weight:700;
+  }
+
+  /* ===== D. Sections label-value ===== */
+  .D .sec { font-size:10px; font-weight:800; letter-spacing:.6px; opacity:.4;
+    text-transform:uppercase; margin:14px 0 6px; }
+  .D .lv { display:flex; gap:12px; font-size:13px; padding:3px 0; }
+  .D .lv .k { width:96px; opacity:.5; flex-shrink:0; }
+  .D .lv .v { color:rgba(255,255,255,.9); }
+
+  .timeline-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 14px;
+    background:rgba(255,255,255,.03); border-radius:10px; padding:10px 12px; }
+  .tl .k { font-size:10px; text-transform:uppercase; letter-spacing:.4px; opacity:.4; }
+  .tl .v { font-size:12px; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Варианты дизайна карточки заказа</h1>
+  <div class="sub">Реальные данные из заказа #ORD_17052026215131 · тёмная тема приложения · армянский. Это макет — выберите вариант, потом напишу React-код.</div>
+
+  <div class="grid">
+
+    <!-- ============ A. COMPACT ============ -->
+    <div class="variant A">
+      <div class="vh"><span class="badge">A</span><span class="name">Компактный (scan-first)</span></div>
+      <div class="desc">Свёрнута по умолчанию. Видно главное; состав/таймлайн/ресторан — под «Մանրամասն».</div>
+      <div class="card">
+        <div class="row">
+          <span class="code">#ORD_17052026215131</span>
+          <span class="chip c-purple">🟣 Վերցրել եմ</span>
+        </div>
+        <div style="margin-top:10px; font-size:13px; line-height:1.7;">
+          <div>👤 Qeerty · <a class="phone" href="#">📞 545645645</a></div>
+          <div class="muted">📍 Gyumr, 58, 22</div>
+        </div>
+        <div class="toggle">
+          <span>🧾 Մանրամասն (կազմ, ռեստորան, ժամանակագրություն)</span>
+          <span class="muted">▾</span>
+        </div>
+        <div class="row summary">
+          <span>💵 Կանխիկ · <span class="c-red" style="padding:0;background:none;border:none">Չվճարված</span></span>
+          <span><b>$1000.00</b></span>
+        </div>
+        <div class="divider"></div>
+        <div class="footer">
+          <button class="btn btn-ghost" style="flex:1">🛵 Ճանապարհին եմ</button>
+          <button class="btn" style="flex:1">→ Հաջորդ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ B. TIMELINE ============ -->
+    <div class="variant B">
+      <div class="vh"><span class="badge">B</span><span class="name">С таймлайн-степпером</span></div>
+      <div class="desc">Прогресс доставки вверху, акцент на текущем этапе и одной главной кнопке.</div>
+      <div class="card">
+        <div class="row">
+          <span class="code">#ORD_17052026215131</span>
+          <span style="font-weight:700">$1000 · 💵</span>
+        </div>
+        <div class="stepper">
+          <div class="step done"><div class="dot"></div><div class="lbl">Ռեստ.</div></div>
+          <div class="step curr"><div class="dot"></div><div class="lbl">Վերցրեց</div></div>
+          <div class="step"><div class="dot"></div><div class="lbl">Ճանապ.</div></div>
+          <div class="step"><div class="dot"></div><div class="lbl">Հասցվ.</div></div>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:13px; line-height:1.7;">
+          <div>👤 Qeerty · <a class="phone" href="#">📞 545645645</a></div>
+          <div class="muted">📍 Gyumr, 58, 22 · Մուտք 1 · Հարկ 2</div>
+          <div>🏪 Pandok · <a class="phone" href="#">📞 65465456456</a></div>
+        </div>
+        <div class="divider"></div>
+        <button class="btn btn-block">✅ Նշել «Ճանապարհին եմ»</button>
+      </div>
+    </div>
+
+    <!-- ============ C. MAP-FIRST ============ -->
+    <div class="variant C">
+      <div class="vh"><span class="badge">C</span><span class="name">Action / map-first</span></div>
+      <div class="desc">Адрес крупно вверху + большие кнопки «Звонок» и «Карта». Удобно на ходу.</div>
+      <div class="card">
+        <div class="row" style="margin-bottom:12px;">
+          <span class="chip c-purple">Վերցրել եմ</span>
+          <span class="code muted" style="font-size:12px">#ORD_17052026215131</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <span style="font-size:20px">📍</span>
+          <div>
+            <div class="addr-big">Gyumr, 58, 22</div>
+            <div class="addr-sub">Մուտք 1 · Հարկ 2 · Դոմոֆոն 22121</div>
+          </div>
+        </div>
+        <div class="ctas">
+          <button class="iconbtn">📞 Զանգ</button>
+          <button class="iconbtn">🧭 Քարտեզ</button>
+        </div>
+        <div class="row" style="font-size:13px;">
+          <span>👤 Qeerty</span>
+          <span class="muted">🏪 Pandok</span>
+        </div>
+        <div class="divider"></div>
+        <div class="footerbar">
+          <span>💵 $1000.00 · <span class="c-red" style="padding:0;background:none;border:none">Չվճարված</span></span>
+          <button class="btn" style="padding:9px 14px">→ Հաջորդ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ D. SECTIONS ============ -->
+    <div class="variant D">
+      <div class="vh"><span class="badge">D</span><span class="name">Секции (label–value)</span></div>
+      <div class="desc">Строгий «документный» вид: выровненные подписи, чёткие группы.</div>
+      <div class="card">
+        <div class="row">
+          <span class="code">#ORD_17052026215131</span>
+          <span class="chip c-purple">Վերցրել եմ</span>
+        </div>
+
+        <div class="sec">Տեղեկություն</div>
+        <div class="lv"><span class="k">Հաճախորդ</span><span class="v">Qeerty</span></div>
+        <div class="lv"><span class="k">Հեռախոս</span><span class="v"><a class="phone" href="#">545645645</a></span></div>
+        <div class="lv"><span class="k">Հասցե</span><span class="v">Gyumr, 58, 22 · Մուտք 1</span></div>
+        <div class="lv"><span class="k">Ռեստորան</span><span class="v">Pandok</span></div>
+
+        <div class="sec">Վճարում</div>
+        <div class="lv"><span class="k">Եղանակ</span><span class="v">💵 Կանխիկ</span></div>
+        <div class="lv"><span class="k">Կարգավիճակ</span><span class="v c-red" style="padding:0;background:none;border:none">Չվճարված</span></div>
+        <div class="lv"><span class="k">Գումար</span><span class="v" style="font-weight:700">$1000.00</span></div>
+
+        <div class="sec">Ժամանակագրություն</div>
+        <div class="timeline-grid">
+          <div class="tl"><div class="k">🏪 Ռեստորանում</div><div class="v">19:28:32</div></div>
+          <div class="tl"><div class="k">📦 Վերցրեց</div><div class="v">19:28:34</div></div>
+          <div class="tl"><div class="k">🛵 Ճանապարհին</div><div class="v">—</div></div>
+          <div class="tl"><div class="k">✅ Հասցված</div><div class="v">—</div></div>
+        </div>
+
+        <div class="divider"></div>
+        <button class="btn btn-block">→ Հաջորդ քայլ</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

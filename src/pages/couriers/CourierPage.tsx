@@ -149,7 +149,7 @@ export default function CourierPage() {
 
   const [tab, setTab] = useState<TabKey>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', status: '' as Courier['status'], restaurantId: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', status: '' as Courier['status'], restaurantId: '', maxOrders: 3 });
 
   const courier: Courier | null = courierApi?.data ?? null;
   const activeOrders = orders.filter((o) => !['done', 'completed', 'cancelled'].includes(o.status));
@@ -171,6 +171,7 @@ export default function CourierPage() {
         email: courier.user?.email || '',
         status: courier.status,
         restaurantId: courier.restaurant?.id || '',
+        maxOrders: courier.maxOrders ?? 3,
       });
     }
   }, [courier]);
@@ -216,8 +217,30 @@ export default function CourierPage() {
             {/*<InfoRow><Label>Location</Label><Value>{courier.lat && courier.lng ? `${Number(courier.lat).toFixed(4)}, ${Number(courier.lng).toFixed(4)}` : '—'}</Value></InfoRow>*/}
           </Card>
           <Card>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Active orders: {activeOrders.length}</div>
-            <div style={{ opacity: 0.6, fontSize: 13 }}>Completed orders: {completedOrders.length}</div>
+            {(() => {
+              const max = courier.maxOrders ?? 0;
+              const active = courier.activeOrdersCount ?? activeOrders.length;
+              const free = courier.availableSlots ?? Math.max(0, max - active);
+              const full = free <= 0;
+              const pct = max > 0 ? Math.min(100, Math.round((active / max) * 100)) : 0;
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                    <span style={{ fontWeight: 600 }}>Բեռնվածություն</span>
+                    <span style={{ fontSize: 14 }}>
+                      <b>{active} / {max}</b>{' '}
+                      <span style={{ color: full ? '#ef4444' : '#34d399', fontWeight: 600 }}>
+                        {full ? '· Լրացված է' : `· կարող է ընդունել ևս ${free}`}
+                      </span>
+                    </span>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: full ? '#ef4444' : '#34d399', transition: 'width .2s ease' }} />
+                  </div>
+                </>
+              );
+            })()}
+            <div style={{ opacity: 0.6, fontSize: 13, marginTop: 12 }}>Completed orders: {completedOrders.length}</div>
           </Card>
         </>
       )}
@@ -292,6 +315,15 @@ export default function CourierPage() {
               options={courierLocationOptions}
               onChange={(v) => setEditForm({ ...editForm, status: v as Courier['status'] })}
               triggerDisplay="chip"
+            />
+          </FormField>
+          <FormField>
+            <Label>Max orders (capacity)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={String(editForm.maxOrders)}
+              onChange={(e) => setEditForm({ ...editForm, maxOrders: Number(e.target.value) })}
             />
           </FormField>
           <Button

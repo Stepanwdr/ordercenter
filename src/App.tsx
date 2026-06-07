@@ -17,6 +17,7 @@ const LoginPage = lazy(() => import('@pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@pages/auth/RegisterPage'));
 const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
 const CourierDashboard = lazy(() => import('@pages/courier/CourierDashboard'));
+const CourierSettings = lazy(() => import('@pages/courier/CourierSettings'));
 
 const AppShell = styled.div`
   position: relative;
@@ -73,30 +74,30 @@ export function App() {
 
       <Route path="/courier-app" element={<CourierApp />} />
 
-      {isCourier && (
+      {isCourier ? (
+        // Courier sees ONLY the courier UI — never the CRM. Anything else → dashboard.
         <Route element={<PrivateRoutes />}>
           <Route path="/" element={<CourierDashboard />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/couriers" element={<CouriersPage />} />
-          <Route path="/couriers/:id" element={<CourierPage />} />
-        </Route>
-      )}
-
-      <Route element={<PrivateRoutes />}>
-        <Route element={<PrivateLayout />}>
-          <Route path="/" element={<OrdersPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/couriers" element={<CouriersPage />} />
-          <Route path="/couriers/:id" element={<CourierPage />} />
-          <Route path="/restaurants" element={<RestaurantsPage />} />
-          <Route path="/menu-management" element={<MenuManagementPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          {/*<Route path="/profile" element={<ProfilePage />} />*/}
-          {/*<Route path="/admin/menu" element={<MenuAdminPage />} />*/}
-          {/*<Route path="/restaurants/create" element={<CreateRestaurantPage />} />*/}
+          <Route path="/settings" element={<CourierSettings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
-      </Route>
+      ) : (
+        <Route element={<PrivateRoutes />}>
+          <Route element={<PrivateLayout />}>
+            <Route path="/" element={<OrdersPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/couriers" element={<CouriersPage />} />
+            <Route path="/couriers/:id" element={<CourierPage />} />
+            <Route path="/restaurants" element={<RestaurantsPage />} />
+            <Route path="/menu-management" element={<MenuManagementPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            {/*<Route path="/profile" element={<ProfilePage />} />*/}
+            {/*<Route path="/admin/menu" element={<MenuAdminPage />} />*/}
+            {/*<Route path="/restaurants/create" element={<CreateRestaurantPage />} />*/}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Route>
+      )}
     </Routes>
   );
 }

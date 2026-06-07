@@ -33,6 +33,7 @@ interface CreateCourierPayload {
   restaurantId?: string;
   currentOrder?: string
   email:string
+  maxOrders?: number;
 }
 
 interface UpdateCourierPayload extends CreateCourierPayload {
@@ -60,6 +61,37 @@ export const useOrdersQuery = (query:query) =>{
     },
   });
 }
+
+export interface OrdersMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Like useOrdersQuery, but keeps the backend pagination/filter meta so the
+// caller can paginate server-side instead of slicing on the front.
+export const useOrdersPaginatedQuery = (query: query) =>
+  useQuery<{ data: Order[]; meta: OrdersMeta }>({
+    queryKey: ['orders-paged', query],
+    queryFn: async () => {
+      const res = await api.get<{ data: Order[]; meta: OrdersMeta }>('/orders', {
+        params: query,
+      });
+      return { data: res.data.data, meta: res.data.meta };
+    },
+  });
+
+// Fetch a single order by id (used by the courier deep-link preview).
+export const useOrderQuery = (id?: string) =>
+  useQuery<Order>({
+    queryKey: ['order', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const res = await api.get<{ data: Order }>(`/orders/${id}`);
+      return res.data.data;
+    },
+  });
 
 export const useOrdersStatsQuery = () =>
   useQuery<{ active: number; completed: number; total: number }>({
@@ -187,14 +219,13 @@ export const useMenuItemsQuery = (menuId: string | null) => {
 };
 
 // Courier-specific data hooks
-export const useGetMe = (courierId:string) => {
+export const useGetMe = () => {
   return useQuery<{ data: Courier }>({
     queryKey: ['courier', 'me'],
     queryFn: async () => {
       const res = await api.get<{ data: Courier}>('/couriers/me');
       return res.data;
     },
-    enabled:!!courierId
   });
 };
 
@@ -256,7 +287,9 @@ export const useUpdateOrderStatusMutation = () => {
       ordersApi.updateOrderStatus(id, status),
     onSuccess: async () => {
       toast.success('Պատվերի կարգավիճակը փոխվեց․');
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['order'] });
     },
   });
 };
@@ -310,7 +343,10 @@ export const useUpdateOrderCourierStatusMutation = () => {
     mutationFn: async ({ orderId, courierStatus }: { orderId: string; courierStatus: Courier['status'] }) =>
       api.put<{ data: Order }>(`/orders/${orderId}/courier-status`, { courierStatus }),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['order'] });
+      await queryClient.invalidateQueries({ queryKey: ['courier'] });
     },
   });
 };
@@ -322,6 +358,7 @@ export const useUpdateOrderPayMethodMutation = () => {
     mutationFn: async ({ id, payMethod }: { id: string; payMethod: string }) =>
       ordersApi.updateOrderPayMethod(id, payMethod),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
     },
   });

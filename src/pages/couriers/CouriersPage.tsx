@@ -25,7 +25,8 @@ const initialCourierForm = {
   status: 'free' as Courier['status'],
   currentOrder: '',
   email:'',
-  restaurantId:""
+  restaurantId:"",
+  maxOrders: 3,
 };
 
  const CouriersPage = ({selectedOrder,handleCourierAsignToOrder}:{selectedOrder?:Order | null, handleCourierAsignToOrder?:(courierId:string)=>void}) => {
@@ -38,8 +39,25 @@ const initialCourierForm = {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [formState, setFormState] = useState({ ...initialCourierForm, restaurantId: '' as string });
+  const [courierOrders, setCourierOrders] = useState<Order[]>([]);
   const { data: restaurantsApi } = useRestaurantsQuery();
   const navigate = useNavigate();
+
+  // Load the selected courier's orders to show their current (active) ones as cards.
+  useEffect(() => {
+    if (!selectedCourier) {
+      setCourierOrders([]);
+      return;
+    }
+    api
+      .get<{ data: Order[] }>(`/orders?courierId=${selectedCourier.userId}&limit=50`)
+      .then((res) => setCourierOrders(res.data?.data ?? []))
+      .catch(() => setCourierOrders([]));
+  }, [selectedCourier]);
+
+  const activeCourierOrders = courierOrders.filter(
+    (o) => !['done', 'completed', 'cancelled'].includes(o.status),
+  );
 
   const openCreateDrawer = () => {
     setFormState(initialCourierForm);
@@ -67,6 +85,7 @@ const initialCourierForm = {
           currentOrder: formState.currentOrder,
           restaurantId: (formState).restaurantId,
           email: formState.email,
+          maxOrders: Number(formState.maxOrders) || 0,
         }
       });
     } else {
@@ -78,7 +97,8 @@ const initialCourierForm = {
             phone: formState.phone,
             status: formState.status,
             currentOrder: formState.currentOrder,
-            restaurantId: formState.restaurantId
+            restaurantId: formState.restaurantId,
+            maxOrders: Number(formState.maxOrders) || 0,
           }
         }
       );
@@ -164,6 +184,7 @@ const editOptions=[
         status: selectedCourier.status || 'free' ,
         currentOrder: '',
         name: selectedCourier?.user?.name || '',
+        maxOrders: selectedCourier.maxOrders ?? 3,
       })
     }
 
@@ -188,6 +209,7 @@ const editOptions=[
               <Th>Հեռախոս</Th>
               <Th>Էլ հասցե</Th>
               <Th>Կարգավիճակ</Th>
+              <Th>Բեռնվածություն</Th>
               <Th>Ռեստորան</Th>
               <Th />
             </tr>
@@ -208,6 +230,9 @@ const editOptions=[
                 </Td>
                 <Td>
                   <Badge status={courier.status}>{getStatusLabelOptions[courier.status]}</Badge>
+                </Td>
+                <Td>
+                  <CourierLoad courier={courier} />
                 </Td>
                 <Td>{restoran}</Td>
                 <Td>
@@ -271,15 +296,44 @@ const editOptions=[
               triggerDisplay="chip"
             />
           </FormField>
-          {selectedCourier && <FormField>
-            Ընթացիկ պատվեր
+          <FormField>
+            Առավելագույն պատվերներ (բեռնվածություն)
             <Input
-              value={formState.currentOrder}
-              onChange={(event) => setFormState({...formState, currentOrder: event.target.value})}
-              placeholder="ORD-1234"
+              type="number"
+              min={0}
+              value={String(formState.maxOrders)}
+              onChange={(event) => setFormState({ ...formState, maxOrders: Number(event.target.value) })}
+              placeholder="3"
             />
           </FormField>
-          }
+          {selectedCourier && (
+            <OrdersBlock>
+              <OrdersBlockLabel>
+                Ընթացիկ պատվերներ
+                <OrdersCount>{activeCourierOrders.length}</OrdersCount>
+              </OrdersBlockLabel>
+              {activeCourierOrders.length === 0 ? (
+                <EmptyOrders>Ակտիվ պատվերներ չկան</EmptyOrders>
+              ) : (
+                activeCourierOrders.map((order) => {
+                  const view = ORDER_STATUS_VIEW[order.status] || { label: order.status, color: '#64748b' };
+                  return (
+                    <MiniOrderCard key={order.id}>
+                      <MiniOrderHead>
+                        <MiniOrderCode>#{order.code}</MiniOrderCode>
+                        <MiniOrderStatus $color={view.color}>{view.label}</MiniOrderStatus>
+                      </MiniOrderHead>
+                      <MiniOrderMeta>
+                        {order.customerName && <div>👤 {order.customerName}{order.customerPhone ? ` · ${order.customerPhone}` : ''}</div>}
+                        {order.deliveryAddress && <div>📍 {order.deliveryAddress}</div>}
+                        <div>💰 ${order.price?.toFixed(2)}</div>
+                      </MiniOrderMeta>
+                    </MiniOrderCard>
+                  );
+                })
+              )}
+            </OrdersBlock>
+          )}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <Button type="submit">{selectedCourier ? 'Պահպանել' : 'Ստեղծել առաքիչ'}</Button>
             <Button type="button" variant="secondary" onClick={closeDrawer}>
@@ -348,6 +402,62 @@ const Badge = styled.span<{ status: string }>`
   color: #fff;
 `;
 
+const LoadWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 130px;
+`;
+
+const LoadText = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+`;
+
+const LoadCount = styled.span`
+  font-weight: 700;
+`;
+
+const LoadFree = styled.span<{ $full: boolean }>`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ $full }) => ($full ? '#ef4444' : '#34d399')};
+`;
+
+const LoadTrack = styled.div`
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+`;
+
+const LoadFill = styled.div<{ $pct: number; $full: boolean }>`
+  height: 100%;
+  width: ${({ $pct }) => $pct}%;
+  background: ${({ $full }) => ($full ? '#ef4444' : '#34d399')};
+  transition: width 0.2s ease;
+`;
+
+const CourierLoad = ({ courier }: { courier: Courier }) => {
+  const max = courier.maxOrders ?? 0;
+  const active = courier.activeOrdersCount ?? 0;
+  const free = courier.availableSlots ?? Math.max(0, max - active);
+  const full = free <= 0;
+  const pct = max > 0 ? Math.min(100, Math.round((active / max) * 100)) : 0;
+  return (
+    <LoadWrap>
+      <LoadText>
+        <LoadCount>{active} / {max}</LoadCount>
+        <LoadFree $full={full}>{full ? 'Լրացված է' : `Ազատ՝ ${free}`}</LoadFree>
+      </LoadText>
+      <LoadTrack><LoadFill $pct={pct} $full={full} /></LoadTrack>
+    </LoadWrap>
+  );
+};
+
 const FormField = styled.label`
   display: grid;
   gap: 10px;
@@ -355,3 +465,82 @@ const FormField = styled.label`
   font-weight: 600;
   margin-bottom: 18px;
 `;
+
+const OrdersBlock = styled.div`
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+`;
+
+const OrdersBlockLabel = styled.div`
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const OrdersCount = styled.span`
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(79, 143, 255, 0.2);
+  color: #4f8fff;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const MiniOrderCard = styled.div`
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+`;
+
+const MiniOrderHead = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+`;
+
+const MiniOrderCode = styled.span`
+  font-weight: 700;
+  font-size: 14px;
+`;
+
+const MiniOrderStatus = styled.span<{ $color: string }>`
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: ${({ $color }) => $color};
+  background: ${({ $color }) => `${$color}22`};
+  border: 1px solid ${({ $color }) => `${$color}44`};
+`;
+
+const MiniOrderMeta = styled.div`
+  font-size: 12px;
+  opacity: 0.65;
+  line-height: 1.6;
+`;
+
+const EmptyOrders = styled.div`
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+`;
+
+const ORDER_STATUS_VIEW: Record<string, { label: string; color: string }> = {
+  pending: { label: 'Սպասման մեջ', color: '#9ca3ff' },
+  accepted: { label: 'Ընդունված', color: '#38bdf8' },
+  cooking: { label: 'Պատրաստվում է', color: '#f59e0b' },
+  ready: { label: 'Պատրաստ է', color: '#38bdf8' },
+  picked_up: { label: 'Վերցված', color: '#8b5cf6' },
+  delivering: { label: 'Առաքվում է', color: '#9d7cff' },
+  enRoute: { label: 'Ճանապարհին է', color: '#9d7cff' },
+  done: { label: 'Ավարտված', color: '#34d399' },
+  completed: { label: 'Կատարված', color: '#34d399' },
+  cancelled: { label: 'Չեղարկված', color: '#ef4444' },
+};
