@@ -16,6 +16,49 @@ const generateCode=()=> {
 
 const ORDER_SORTABLE_FIELDS = ['id', 'status', 'price', 'code', 'createdAt', 'updatedAt', 'prepTime', 'payMethod', 'paid', 'customerName', 'customerPhone', 'deliveryAddress', 'orderType', 'courierStatus'];
 
+// Full association graph used when returning an order (list or single).
+const ORDER_INCLUDE = [
+  { model: User, as: 'courier' },
+  { model: Courier, as: 'courierProfile', include: [{ model: User, as: 'user' }] },
+  { model: User, as: 'operator' },
+  {
+    model: Restaurant,
+    as: 'restaurant',
+    include: [{ model: Menu, as: 'menus', include: [{ model: MenuItem, as: 'items' }] }],
+  },
+  {
+    model: OrderItem,
+    as: 'orderItems',
+    include: [
+      {
+        model: MenuItem,
+        as: 'menuItem',
+        include: [{ model: Menu, as: 'menu', include: [{ model: Restaurant, as: 'restaurant' }] }],
+      },
+    ],
+  },
+];
+
+// Deep link into the courier dashboard that opens the order's card preview sheet.
+const buildOrderLink = (orderId) => {
+  const base = (process.env.TELEGRAM_MINIAPP_URL || 'http://localhost:5173').replace(/\/$/, '');
+  return `${base}/?orderId=${orderId}`;
+};
+
+// Telegram message extras: an inline button + the raw link appended to the text,
+// so the courier can open the order in their dashboard from the notification.
+const orderLinkExtras = (orderId) => {
+  const link = buildOrderLink(orderId);
+  return {
+    text: `\n\n🔗 <a href="${link}">Բացել պատվերը</a>`,
+    options: {
+      reply_markup: {
+        inline_keyboard: [[{ text: '📦 Բացել պատվերը', web_app: { url: link } }]],
+      },
+    },
+  };
+};
+
 class OrderService {
   static async listOrders(query = {}) {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC', status, search, courierId, restaurantId } = query;
@@ -45,39 +88,7 @@ class OrderService {
 
     const { count, rows } = await Order.findAndCountAll({
       where,
-      include: [
-        { model: User, as: 'courier' },
-        { model: Courier, as: 'courierProfile', include: [{ model: User, as: 'user' }] },
-        { model: User, as: 'operator' },
-        {
-          model: Restaurant,
-          as: 'restaurant',
-          include: [
-            {
-              model: Menu,
-              as: 'menus',
-              include: [{ model: MenuItem, as: 'items' }],
-            },
-          ],
-        },
-        {
-          model: OrderItem,
-          as: 'orderItems',
-          include: [
-            {
-              model: MenuItem,
-              as: 'menuItem',
-              include: [
-                {
-                  model: Menu,
-                  as: 'menu',
-                  include: [{ model: Restaurant, as: 'restaurant' }],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+      include: ORDER_INCLUDE,
       order: [[safeSortBy, safeSortOrder]],
       offset,
       limit: Number(limit),
@@ -93,6 +104,12 @@ class OrderService {
         totalPages: Math.ceil(count / Number(limit)),
       },
     };
+  }
+
+  static async getOrder(id) {
+    const order = await Order.findByPk(id, { include: ORDER_INCLUDE });
+    if (!order) throw new AppError(404, 'Order not found');
+    return order;
   }
 
   static async getStats() {
@@ -186,8 +203,9 @@ class OrderService {
         if (order.courierId) {
           const courierProfile = await Courier.findByPk(order.courierId);
           if (courierProfile && courierProfile.telegramId) {
-            const message = `Նոր պատվեր: \n#${order.code}\nԱնուն: ${order.customerName || '—'}\nՀեռախոս: ${order.customerPhone || '—'}\nՄասնագիտություն: ${order.orderType || '—'}\nՀասցե: ${order.deliveryAddress || '—'}\nԳումար: ${order.price}`;
-            await telegramService.sendMessage(courierProfile.telegramId, message);
+            const extras = orderLinkExtras(order.id);
+            const message = `Նոր պատվեր: \n#${order.code}\nԱնուն: ${order.customerName || '—'}\nՀեռախոս: ${order.customerPhone || '—'}\nՄասնագիտություն: ${order.orderType || '—'}\nՀասցե: ${order.deliveryAddress || '—'}\nԳումար: ${order.price}${extras.text}`;
+            await telegramService.sendMessage(courierProfile.telegramId, message, extras.options);
             // emit socket event for admin clients
             try {
               const io = getIo();
@@ -238,8 +256,9 @@ class OrderService {
       // Notify courier via telegram about assignment
       try {
         if (courierProfile && courierProfile.telegramId) {
-          const message = `Ստացել եք նոր պատվեր: \n#${order.code}\nՏվյալներ:\nՊատվիրատու: ${order.customerName || '—'}\nՀեռախոս: ${order.customerPhone || '—'}\nՀասցե: ${order.deliveryAddress || '—'}\nԳումար: ${order.price}`;
-          await telegramService.sendMessage(courierProfile.telegramId, message);
+          const extras = orderLinkExtras(order.id);
+          const message = `Ստացել եք նոր պատվեր: \n#${order.code}\nՏվյալներ:\nՊատվիրատու: ${order.customerName || '—'}\nՀեռախոս: ${order.customerPhone || '—'}\nՀասցե: ${order.deliveryAddress || '—'}\nԳումար: ${order.price}${extras.text}`;
+          await telegramService.sendMessage(courierProfile.telegramId, message, extras.options);
         }
       } catch (err) {
         // ignore telegram failure
@@ -321,6 +340,8 @@ class OrderService {
     const order = await Order.findByPk(orderId);
     if (!order) throw new AppError(404, 'Order not found');
     order.payMethod = payMethod;
+    // Selecting a payment method marks the order as paid.
+    order.paid = true;
     await order.save();
     try {
       const io = getIo();

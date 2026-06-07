@@ -1,18 +1,46 @@
-import { User, Courier, Restaurant } from '../models/index.js';
+import { Op, fn, col } from 'sequelize';
+import { User, Courier, Restaurant, Order } from '../models/index.js';
 import AppError from '../utils/AppError.js';
 import { getIo } from './socket.js';
+
+// Orders that still occupy a courier (i.e. count toward their current load).
+const ACTIVE_ORDER_STATUSES = ['pending', 'accepted', 'cooking', 'ready', 'picked_up', 'delivering', 'enRoute'];
+
+const withLoad = (courier, activeOrdersCount) => {
+  const json = typeof courier.toJSON === 'function' ? courier.toJSON() : courier;
+  const max = json.maxOrders ?? 0;
+  json.activeOrdersCount = activeOrdersCount;
+  json.availableSlots = Math.max(0, max - activeOrdersCount);
+  return json;
+};
+
 class CourierService {
   static async listCouriers() {
-    return Courier.findAll({
+    const couriers = await Courier.findAll({
       include: [{ model: User, as: 'user' }, { model: Restaurant, as: 'restaurant' }],
       order: [['createdAt', 'DESC']],
     });
+    // Active order count per courier in a single grouped query.
+    const rows = await Order.findAll({
+      attributes: ['courierId', [fn('COUNT', col('id')), 'cnt']],
+      where: { courierId: { [Op.ne]: null }, status: { [Op.in]: ACTIVE_ORDER_STATUSES } },
+      group: ['courierId'],
+      raw: true,
+    });
+    const countByCourier = {};
+    rows.forEach((r) => { countByCourier[r.courierId] = Number(r.cnt) || 0; });
+    return couriers.map((c) => withLoad(c, countByCourier[c.userId] || 0));
   }
 
   static async getCourier(userId) {
-    return Courier.findByPk(userId, {
-      include: [{ model: User, as: 'user' }, {model: Restaurant, as: 'restaurant' }],
+    const courier = await Courier.findByPk(userId, {
+      include: [{ model: User, as: 'user' }, { model: Restaurant, as: 'restaurant' }],
     });
+    if (!courier) return null;
+    const activeOrdersCount = await Order.count({
+      where: { courierId: userId, status: { [Op.in]: ACTIVE_ORDER_STATUSES } },
+    });
+    return withLoad(courier, activeOrdersCount);
   }
 
   static async createCourier(payload, auth) {
@@ -22,7 +50,7 @@ class CourierService {
       const restaurantExists = await Restaurant.findByPk(restaurantId);
       if (!restaurantExists) throw new AppError(404, 'Restaurant not found');
     }
-    const courier = await Courier.create({ userId: user.id,name: payload.name, status: payload?.status ?? 'free', lat: payload?.lat ?? null, lng: payload?.lng ?? null, restaurantId });
+    const courier = await Courier.create({ userId: user.id,name: payload.name, status: payload?.status ?? 'free', lat: payload?.lat ?? null, lng: payload?.lng ?? null, maxOrders: payload?.maxOrders ?? 3, restaurantId });
     // persist telegramId if provided
     if (payload.telegramId) {
       await courier.update({ telegramId: payload.telegramId });
@@ -33,18 +61,20 @@ class CourierService {
   static async updateCourier(userId, payload, auth) {
     const courier = await Courier.findByPk(userId);
     if (!courier) throw new AppError(404, 'Courier not found');
-    // Basic authorization: allow admin or the courier owner (userId)
-    // Assuming auth contains userId and role
+    // Basic authorization: allow the courier owner, an admin, or an operator.
+    // Assuming auth contains userId and role.
     const isOwner = auth?.userId === userId;
-    const isAdmin = auth?.role === 'admin';
-    if (!isOwner && !isAdmin) {
+    const isPrivileged = auth?.role === 'admin' || auth?.role === 'operator';
+    if (!isOwner && !isPrivileged) {
       throw new AppError(403, 'Not authorized to update courier');
     }
+    // Courier-table fields
     const updates = {}
 
     if ('status' in payload) updates['status'] = payload.status;
     if ('lat' in payload) updates['lat'] = payload.lat;
     if ('lng' in payload) updates['lng'] = payload.lng;
+    if ('maxOrders' in payload) updates['maxOrders'] = payload.maxOrders;
     if ('telegramId' in payload) updates['telegramId'] = payload.telegramId;
     if ('restaurantId' in payload) {
       const restaurantId = (payload).restaurantId;
@@ -57,7 +87,19 @@ class CourierService {
       }
     }
     await courier.update(updates);
-    // location kept simple; return with user included
+
+    // User-table fields (name/email/phone live on the associated User, not Courier)
+    const userUpdates = {};
+    if ('name' in payload) userUpdates['name'] = payload.name;
+    if ('email' in payload) userUpdates['email'] = payload.email;
+    if ('phone' in payload) userUpdates['phone'] = payload.phone;
+    if ('avatar' in payload) userUpdates['avatar'] = payload.avatar;
+    if (Object.keys(userUpdates).length) {
+      const user = await User.findByPk(userId);
+      if (user) await user.update(userUpdates);
+    }
+
+    // return with user included
     return Courier.findByPk(userId, { include: [{ model: User, as: 'user' }] });
   }
 

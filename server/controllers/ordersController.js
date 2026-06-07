@@ -14,6 +14,11 @@ class OrdersController {
     res.json({ success: true, data: stats });
   };
 
+  static get = async (req, res) => {
+    const order = await OrderService.getOrder(req.params.id);
+    res.json({ success: true, data: order });
+  };
+
   static create = async (req, res) => {
     const order = await OrderService.createOrder(req.validated, req.auth);
     res.status(201).json({

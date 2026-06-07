@@ -9,6 +9,7 @@ const router = express.Router({ mergeParams: true });
 
 router.get('/', asyncHandler(OrdersController.list));
 router.get('/stats', asyncHandler(OrdersController.stats));
+router.get('/:id', asyncHandler(OrdersController.get));
 router.post('/', authorizeRole('admin', 'customer', 'operator'), validate(schemas.createOrder), asyncHandler(OrdersController.create));
 router.put('/:id/assign-courier', authorizeRole('admin', 'operator','dispatcher'), validate(schemas.assignCourier), asyncHandler(OrdersController.assignCourier));
 router.put('/:id/status',  validate(schemas.updateOrderStatus), asyncHandler(OrdersController.updateStatus));

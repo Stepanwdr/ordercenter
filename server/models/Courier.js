@@ -36,6 +36,11 @@ Courier.init(
       allowNull: false,
       defaultValue: 'free',
     },
+    maxOrders: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 3,
+    },
     lat: {
       type: DataTypes.DECIMAL(10, 7),
       allowNull: true,

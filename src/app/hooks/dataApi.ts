@@ -187,13 +187,14 @@ export const useMenuItemsQuery = (menuId: string | null) => {
 };
 
 // Courier-specific data hooks
-export const useGetMe = () => {
+export const useGetMe = (courierId:string) => {
   return useQuery<{ data: Courier }>({
     queryKey: ['courier', 'me'],
     queryFn: async () => {
       const res = await api.get<{ data: Courier}>('/couriers/me');
       return res.data;
     },
+    enabled:!!courierId
   });
 };
 

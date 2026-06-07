@@ -144,7 +144,7 @@ const orderStatusOptions: { value: OrderStatus; label: string }[] = [
 ];
 
 const OrdersPage = () => {
-  const {data:meData} = useGetMe()
+
   const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [isOpenCouriersDialog,setOpenCouriersDialog]=useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);

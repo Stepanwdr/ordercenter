@@ -356,7 +356,7 @@ export default function CourierDashboard() {
   const navigate = useNavigate();
   const courierId = user?.id || '';
 
-  const { data: courierData, refetch: refetchCourier } = useGetMe();
+  const { data: courierData, refetch: refetchCourier } = useGetMe(courierId);
   const courier = courierData?.data;
   const courierStatus = courier?.status || 'free';
 

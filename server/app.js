@@ -57,8 +57,17 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// Serve uploaded images publicly before auth middleware
-app.use('/uploads', express.static(path.resolve('uploads')));
+// Serve uploaded images publicly before auth middleware.
+// Override helmet's default CORP so images can be embedded cross-origin
+// (e.g. the frontend on :5173 loading an <img> from this API on :5000).
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(path.resolve('uploads')),
+);
 app.use('/upload', uploadRouter);
 app.use('/courier-app', courierAppRouter);
 app.use(authorization);

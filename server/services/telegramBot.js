@@ -28,11 +28,11 @@ export const handleUpdate = async (update) => {
     }
     await courier.update({ telegramId: chatId, telegram_link_token: null, telegram_link_expires_at: null });
     if (botInstance) {
-      const miniAppUrl = process.env.TELEGRAM_MINIAPP_URL || 'http://localhost:5173/courier-app';
-      await botInstance.sendMessage(chatId, '🔗 Ապահով կապ հաստատվեց — դուք կապված եք որպես առաքիչ։\n\nԲացեք հավելվածը ստորևի կոճակով։', {
+      const miniAppUrl = process.env.TELEGRAM_MINIAPP_URL || 'http://localhost:5173';
+      await botInstance.sendMessage(chatId, '🔗 Ապահով կապ հաստատվեց — դուք կապված եք որպես առաքիչ', {
         reply_markup: {
           keyboard: [
-            [{ text: '📋 Courier App', web_app: { url: miniAppUrl } }]
+            [{ text: '📋 Իմ պատվերները', web_app: { url: miniAppUrl } }]
           ],
           resize_keyboard: true,
         }

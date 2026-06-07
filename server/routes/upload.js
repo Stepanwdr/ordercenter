@@ -31,9 +31,11 @@ router.post('/', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No image uploaded' });
   }
-  const host = `${req.protocol}://${req.get('host')}`;
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = `${proto}://${req.get('host')}`;
   const rel = path.relative(baseUploads, req.file.destination);
-  const url = `/uploads/${rel}/${req.file.filename}`.replace(/\\/g, '/');
+  const pathname = `/uploads/${rel}/${req.file.filename}`.replace(/\\/g, '/');
+  const url = `${host}${pathname}`;
   res.json({ success: true, url });
 });
 

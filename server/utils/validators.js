@@ -159,6 +159,7 @@ export const schemas = {
     email: z.string().email(),
     restaurantId: z.string().uuid(),
     telegramId: z.string().optional(),
+    maxOrders: z.coerce.number().int().min(0).optional(),
   }),
   updateCourier: z.object({
     name: z.string().min(1).optional(),
@@ -166,9 +167,11 @@ export const schemas = {
     status: z.enum(courierStatuses).optional(),
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
-    email: z.string().email(),
-    restaurantId: z.string().uuid(),
+    email: z.string().email().optional(),
+    restaurantId: z.string().uuid().nullable().optional(),
     telegramId: z.string().optional(),
+    avatar: z.string().optional(),
+    maxOrders: z.coerce.number().int().min(0).optional(),
   }),
 };
 
