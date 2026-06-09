@@ -28,6 +28,9 @@ export const Title = styled.h1`
   margin: 0;
   font-size: 2rem;
   letter-spacing: -0.03em;
+    @media (max-width: 760px) {
+        font-size: 1rem;
+    }
 `;
 
 export const Description = styled.p`

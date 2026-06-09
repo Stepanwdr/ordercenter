@@ -13,6 +13,8 @@ export const schemas = {
     email: z.string().email(),
     password: z.string().min(8).max(72),
     role: roleSchema.default('operator'),
+    name: z.string().min(1).optional(),
+    restaurantId: z.string().uuid().optional(),
   }),
   login: z.object({
     email: z.string().email(),

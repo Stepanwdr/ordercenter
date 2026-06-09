@@ -5,6 +5,8 @@ const PUBLIC_ROUTES = new Set([
   'POST:/auth/login',
   'POST:/auth/refresh',
   'GET:/',
+  // Needed so the public registration page can list restaurants when creating a courier.
+  'GET:/restaurants',
 ]);
 
 export default function authorization(req, res, next) {

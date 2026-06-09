@@ -42,6 +42,7 @@ class AuthService {
           email: payload.email.toLowerCase(),
           password: hashedPassword,
           role: payload.role,
+          name: payload.name ?? null,
         },
         { transaction }
       );
@@ -51,6 +52,7 @@ class AuthService {
           {
             userId: user.id,
             status: 'offline',
+            restaurantId: payload.restaurantId ?? null,
           },
           { transaction }
         );

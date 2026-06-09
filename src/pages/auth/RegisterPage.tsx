@@ -9,6 +9,7 @@ import { registerSchema } from '@app/validation/registerSchema';
 import { toast } from 'react-toastify';
 import {Dropdown} from "@shared/ui/Dropdown.tsx";
 import { useRegisterMutation } from '@app/hooks/authApi';
+import { useRestaurantsQuery } from '@app/hooks/dataApi';
 
  const RegisterPage = () => {
   const [role, setRole] = useState<UserRole>('operator');
@@ -16,9 +17,12 @@ import { useRegisterMutation } from '@app/hooks/authApi';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [restaurantId, setRestaurantId] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const registerMutation = useRegisterMutation();
+  const { data: restaurantsResponse } = useRestaurantsQuery();
+  const restaurantOptions = (restaurantsResponse?.data ?? []).map((r) => ({ value: r.id, label: r.name }));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,6 +34,13 @@ import { useRegisterMutation } from '@app/hooks/authApi';
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (role === 'courier' && !restaurantId) {
+      const message = 'Ընտրեք ռեստորան առաքիչի համար';
+      toast.error(message);
+      setError(message);
       return;
     }
 
@@ -50,6 +61,7 @@ import { useRegisterMutation } from '@app/hooks/authApi';
         email: email.trim(),
         password: password.trim(),
         role,
+        ...(role === 'courier' && restaurantId ? { restaurantId } : {}),
       });
 
       localStorage.setItem(
@@ -98,6 +110,18 @@ const rolesOption =[{
               triggerDisplay="chip"
             />
           </Field>
+          {role === 'courier' && (
+            <Field>
+              Ռեստորան
+              <Dropdown
+                value={restaurantId}
+                options={restaurantOptions}
+                placeholder="Ընտրել ռեստորան"
+                onChange={(value) => setRestaurantId(value)}
+                triggerDisplay="chip"
+              />
+            </Field>
+          )}
           <Field>
            Անուն Ազգանուն
             <Input

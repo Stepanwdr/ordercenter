@@ -15,6 +15,7 @@ export type RegisterPayload = {
   password: string;
   role: UserRole;
   name?: string;
+  restaurantId?: string;
 };
 
 export const registerRequest = async (payload: RegisterPayload) => {

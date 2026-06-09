@@ -53,9 +53,15 @@ api.interceptors.response.use(
     const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
     const message = error?.response?.data?.message || error.message || 'Network error';
 
+    // Only treat a 401 as an *expired session* when we actually had a token.
+    // On public pages (login/register) a 401 just means "not authenticated".
+    const hadToken = (() => {
+      try { return !!localStorage.getItem('order_center_access_token'); } catch { return false; }
+    })();
+
     // Invalid/expired token: clear the session and prompt a single re-login modal
     // instead of showing one error toast per failed request.
-    if (status === 401 && !isAuthEndpoint) {
+    if (status === 401 && !isAuthEndpoint && hadToken) {
       try {
         localStorage.removeItem('order_center_user');
         localStorage.removeItem('order_center_access_token');
