@@ -48,6 +48,7 @@ export interface Order {
   courierStatus?: CourierStatus;
   totalAmount: number;
   price: number;
+  deliveryFee?: number;
   status: OrderStatus;
   createdAt: string;
   orderItems: OrderItem[];

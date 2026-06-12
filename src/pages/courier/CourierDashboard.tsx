@@ -491,6 +491,15 @@ const TotalsLabel = styled.span`
   letter-spacing: 0.5px;
 `;
 
+const DeliveryRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px 8px;
+  font-size: 13px;
+  opacity: 0.75;
+`;
+
 const TimelineGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -652,9 +661,9 @@ const COURIER_STATUS_FLOW: CourierStatus[] = ['atRestaurant', 'pickedUp', 'enRou
 
 // Short labels for the delivery-progress stepper at the top of each card.
 const STEP_LABELS: Record<CourierStatus, string> = {
-  atRestaurant: 'Ռեստորան',
-  pickedUp: 'Վերցրեց',
-  enRoute: 'Ճանապարհ',
+  atRestaurant: 'Ռեստորանում',
+  pickedUp: 'Վերցրած',
+  enRoute: 'Ճանապարհին',
   delivered: 'Հասցված',
   free: '', busy: '', offline: '', dayOff: '',
 };
@@ -1015,6 +1024,13 @@ export default function CourierDashboard() {
                 </ItemsList>
               )}
             </>
+          )}
+
+          {Number(order.deliveryFee) > 0 && (
+            <DeliveryRow>
+              <span>🛵 Առաքման գումարը</span>
+              <span>${Number(order.deliveryFee).toFixed(2)}</span>
+            </DeliveryRow>
           )}
 
           <TotalsRow>

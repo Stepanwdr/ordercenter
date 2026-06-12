@@ -20,6 +20,11 @@ Order.init(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
+    deliveryFee: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
     customerPhone: {
       type: DataTypes.STRING(64),
       allowNull: true,

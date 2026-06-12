@@ -82,6 +82,7 @@ export const schemas = {
   }),
   createOrder: z.object({
     price: z.coerce.number().positive(),
+    deliveryFee: z.coerce.number().min(0).optional(),
     restaurantId: z.string().uuid(),
     courierId: z.string().uuid().optional(),
     customerPhone: z.string().min(1).max(32).optional(),

@@ -375,6 +375,9 @@ const OrdersPage = () => {
             triggerDisplay="chip"
           />
         ),},
+      { key: 'deliveryFee', name: 'Առաքման գումար', resizable: true, draggable: true, sortable: true,
+        renderCell: ({ row }: { row: Order }) => `${Number(row.deliveryFee ?? 0).toFixed(2)}`,
+      },
       { key: 'price', name: 'Գումարը', resizable: true, draggable: true,  sortable: true },
     ],
     [handleCourierStatusChange, handleOrderStatusChange, handlePaidMethodChange]

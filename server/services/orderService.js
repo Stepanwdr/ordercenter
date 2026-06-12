@@ -154,16 +154,19 @@ class OrderService {
         }
       }
 
-      // If orderItems provided, calculate total price from items; otherwise use payload.price
-      let totalPrice = payload.price ?? 0;
+      // If orderItems provided, calculate items total from them; otherwise use payload.price
+      let itemsTotal = payload.price ?? 0;
       if (Array.isArray(payload.orderItems) && payload.orderItems.length) {
-        totalPrice = payload.orderItems.reduce((sum, it) => sum + ((it.price ?? 0) * (it.quantity ?? 1)), 0);
+        itemsTotal = payload.orderItems.reduce((sum, it) => sum + ((it.price ?? 0) * (it.quantity ?? 1)), 0);
       }
+      const deliveryFee = Number(payload.deliveryFee ?? 0) || 0;
+      const totalPrice = itemsTotal + deliveryFee;
 
       const order = await Order.create(
         {
           status: 'pending',
           price: totalPrice,
+          deliveryFee,
           operatorId,
           restaurantId: payload.restaurantId,
           courierId: payload.courierId ?? null,

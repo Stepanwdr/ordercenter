@@ -43,6 +43,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   const [activeCategoryId, setActiveCategoryId] = useState('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pickupTime, setPickupTime] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('');
 
   const restaurantOptions = restaurants.map((r) => ({ value: r.id, label: r.name }));
   const menuOptions = menus.map((m) => ({ value: m.id, label: m.name }));
@@ -74,7 +75,8 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
 
   const subtotal = cart.reduce((sum, item) => sum + Number(item.price) * item.count, 0);
   const tax = subtotal * 0.08;
-  const total = subtotal + tax;
+  const deliveryFeeNum = Number(deliveryFee) || 0;
+  const total = subtotal + tax + deliveryFeeNum;
 
   const handleCreatOrder =async () => {
     // assemble payload and create order
@@ -90,6 +92,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
     const deliveryAddress = `${formData.city || ''}, ${formData.street || ''}, ${formData.building || ''},`;
     const payload: any = {
       price: total,
+      deliveryFee: deliveryFeeNum,
       restaurantId,
       ...formData,
       prepTime:pickupTime,
@@ -177,6 +180,20 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
               />
          </InputWrapper>
         }
+        {cart.length > 0 &&
+          <InputWrapper>
+            <Label>
+              Առաքման գումարը
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              value={deliveryFee}
+              onChange={(event) => setDeliveryFee(event.target.value)}
+              placeholder="0"
+            />
+         </InputWrapper>
+        }
       </Main>
       <OrderPanel>
         <Title style={{ fontSize: '1.4rem' }}>Պատվեր</Title>
@@ -201,6 +218,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
         </CartList>
         <Totals>
           <TotalRow><span>Տրման ժամը</span><span>{pickupTime || 'Անիմջապես'}</span></TotalRow>
+          <TotalRow><span>Առաքում</span><span>{toCurrency(deliveryFeeNum)}</span></TotalRow>
           <TotalRow><strong>Գումարը</strong><strong>{toCurrency(total)}</strong></TotalRow>
         </Totals>
         <FooterActions>
