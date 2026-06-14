@@ -18,40 +18,30 @@ dotenv.config();
 
 const app = express();
 
-const corsOrigins = (process.env.CORS_ORIGINS || 'https://api.deliverydepartment.am')
+// Extra allowed origins via env (comma-separated), e.g. CORS_ORIGINS="https://crm.example.am".
+const corsOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-// fallback CORS headers — set before everything
-app.use((req, res, next) => {
-  const requestOrigin = req.headers.origin || '';
-  const allowed = corsOrigins.includes(requestOrigin) || /^https?:\/\/localhost(:\d+)?$/.test(requestOrigin);
-  if (allowed) {
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', corsOrigins[0] || '*');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-  next();
-});
+// Allow: any *.deliverydepartment.am (and the apex), any localhost, plus CORS_ORIGINS.
+const isAllowedOrigin = (origin) =>
+  !!origin && (
+    corsOrigins.includes(origin) ||
+    /^https?:\/\/localhost(:\d+)?$/i.test(origin) ||
+    /^https?:\/\/([a-z0-9-]+\.)*deliverydepartment\.am$/i.test(origin)
+  );
 
-// cors package for convenience (origin check already done above)
+// Single CORS layer. Reflects the request origin when allowed (required for
+// credentials), handles preflight, and never throws on a disallowed origin.
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || corsOrigins.includes(origin) || /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
-      callback(null, true);
-      return;
-    }
-    callback(new Error('CORS origin is not allowed'));
+    // no Origin header (server-to-server, curl) → allow; otherwise check the allowlist
+    callback(null, !origin || isAllowedOrigin(origin));
   },
   credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-Token'],
 }));
 
 app.use(helmet());
