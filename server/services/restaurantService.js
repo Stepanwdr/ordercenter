@@ -12,6 +12,15 @@ class RestaurantService {
     });
   }
 
+  // Full restaurant incl. channelConfig — for the admin edit form (authed route only).
+  static async getRestaurant(id) {
+    const restaurant = await Restaurant.findByPk(id, {
+      include: [{ model: User, as: 'owner' }, { model: RestaurantAddress, as: 'addresses' }],
+    });
+    if (!restaurant) throw new AppError(404, 'Restaurant not found');
+    return restaurant;
+  }
+
   static async createRestaurant(payload, authUser) {
     const ownerId = authUser.userId;
     const owner = await User.findByPk(ownerId);

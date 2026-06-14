@@ -16,15 +16,22 @@ export const clientAdapter = {
   async sendOrder(order, restaurant, payload) {
     pushToRestaurant(restaurant.id, { event: 'order:new', id: order.id, data: payload });
 
-    // Print the kitchen ticket directly to the thermal printer (RAW TCP:9100).
-    // Printing must NOT affect dispatch: failures are logged, never thrown — the
-    // SSE push already delivered the order to the tablet (the backup channel).
+    // Print the kitchen ticket directly to the thermal printer (RAW TCP:9100 —
+    // over LAN if the backend is local, or over VPN if the backend is in the cloud).
     const printerConfig = restaurant.channelConfig?.printer;
     if (printerConfig?.ip) {
       const result = await printOrderTicket(payload, printerConfig);
       if (!result.ok) {
+        const msg = `[kitchen] ticket print failed for ${order.code}: ${result.reason}${result.error ? ` (${result.error})` : ''}`;
+        if (printerConfig.required) {
+          // Direct print IS the delivery method (cloud → VPN → printer, no tablet):
+          // surface the failure so the dispatcher marks it 'failed' and the retry
+          // worker re-prints with backoff (transient VPN/printer outages recover).
+          throw new Error(msg);
+        }
+        // Best-effort: an SSE tablet is the backup channel, so don't fail dispatch.
         // eslint-disable-next-line no-console
-        console.error(`[kitchen] ticket print failed for ${order.code}: ${result.reason}${result.error ? ` (${result.error})` : ''}`);
+        console.error(msg);
       }
     }
 

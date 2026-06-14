@@ -11,6 +11,8 @@ const upload = multer({ dest: './uploads' });
 const router = express.Router();
 
 router.get('/', asyncHandler(RestaurantsController.list));
+// Authed single-restaurant fetch (includes channelConfig). Not in PUBLIC_ROUTES.
+router.get('/:id', authorizeRole('admin', 'operator'), asyncHandler(RestaurantsController.get));
 router.post('/', authorizeRole('admin', 'operator'), upload.single('photo'), validate(schemas.createRestaurant), asyncHandler(RestaurantsController.create));
 router.put('/:id', authorizeRole('admin', 'operator'), upload.single('photo'), validate(schemas.updateRestaurant), asyncHandler(RestaurantsController.update));
 router.delete('/:id', authorizeRole('admin', 'operator'), asyncHandler(RestaurantsController.delete));

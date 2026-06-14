@@ -9,6 +9,11 @@ class RestaurantsController {
     });
   };
 
+  static get = async (req, res) => {
+    const restaurant = await RestaurantService.getRestaurant(req.params.id);
+    res.json({ success: true, data: restaurant });
+  };
+
   static create = async (req, res) => {
     let payload = req.validated;
     // If addresses is sent as string (from multipart), try to parse it

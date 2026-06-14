@@ -1,0 +1,14 @@
+{
+  "name": "kitchen-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local agent: prints cloud orders on the restaurant's thermal printer over SSE.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-thermal-printer": "^4.6.0"
+  }
+}

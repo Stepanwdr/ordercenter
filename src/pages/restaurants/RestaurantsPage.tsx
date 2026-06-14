@@ -3,9 +3,17 @@ import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
 import { Drawer } from '@shared/ux/Drawer';
 import { Input } from '@shared/ui/Input';
-import type {Address, Restaurant} from '@shared/types';
+import { Dropdown } from '@shared/ui/Dropdown';
+import type {Address, ChannelConfig, DeliveryChannel, Restaurant} from '@shared/types';
 import {useCreateRestaurantMutation, useRestaurantsQuery, useUpdateRestaurantMutation, useDeleteRestaurantMutation} from '@app/hooks/dataApi';
 import {ImageUploader} from "@shared/ui/ImageUploader.tsx";
+import { api } from '@shared/api/base';
+
+const channelOptions: { value: DeliveryChannel; label: string }[] = [
+  { value: 'client', label: 'Свой принтер/планшет (client)' },
+  { value: 'iiko', label: 'iiko' },
+  { value: 'rkeeper', label: 'r_keeper' },
+];
 
 const PageRoot = styled.main`
   padding: 32px;
@@ -170,6 +178,16 @@ const tabs=[
   const [building, setBuilding] = useState('');
   const [apartment, setApartment] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  // Kitchen channel + printer config
+  const [deliveryChannel, setDeliveryChannel] = useState<DeliveryChannel>('client');
+  const [printerIp, setPrinterIp] = useState('');
+  const [printerPort, setPrinterPort] = useState('9100');
+  const [printerRequired, setPrinterRequired] = useState(false);
+  const [printerTimeout, setPrinterTimeout] = useState('');
+  // Preserve other channelConfig keys (deviceToken, iiko creds) so editing the printer doesn't wipe them.
+  const [existingChannelConfig, setExistingChannelConfig] = useState<ChannelConfig>({});
+  // Only write channel/printer config back once we've actually loaded it (avoid wiping on a failed fetch).
+  const [channelLoaded, setChannelLoaded] = useState(false);
   const [selectedTab,setSelectedTab] = useState(tabs[0].value);
   const { data: apiRestaurants } = useRestaurantsQuery();
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
@@ -180,7 +198,16 @@ const tabs=[
   const deleteRestaurantMutation = useDeleteRestaurantMutation();
   const mode = selectedRestaurant ? 'Edit' : 'Create';
 
-  const openForm = (restaurant?: Restaurant) => {
+  const resetChannelFields = () => {
+    setDeliveryChannel('client');
+    setPrinterIp('');
+    setPrinterPort('9100');
+    setPrinterRequired(false);
+    setPrinterTimeout('');
+    setExistingChannelConfig({});
+  };
+
+  const openForm = async (restaurant?: Restaurant) => {
     if (restaurant) {
       setSelectedRestaurant(restaurant);
       // Populate form with existing restaurant data (best effort)
@@ -198,10 +225,32 @@ const tabs=[
         phone: restaurant.phone,
         status: restaurant.status,
       } as any);
-    } else {
-      setSelectedRestaurant(null);
-      setFormState(initialFormState);
+      resetChannelFields();
+      setChannelLoaded(false);
+      setDeliveryChannel(restaurant.deliveryChannel ?? 'client');
+      setIsDrawerOpen(true);
+      // channelConfig is excluded from the public list — fetch the full record (authed).
+      try {
+        const res = await api.get<{ data: Restaurant }>(`/restaurants/${restaurant.id}`);
+        const full = res.data?.data;
+        const cc = (full?.channelConfig ?? {}) as ChannelConfig;
+        setExistingChannelConfig(cc);
+        if (full?.deliveryChannel) setDeliveryChannel(full.deliveryChannel);
+        const p = cc.printer ?? {};
+        setPrinterIp(p.ip ?? '');
+        setPrinterPort(p.port != null ? String(p.port) : '9100');
+        setPrinterRequired(!!p.required);
+        setPrinterTimeout(p.timeout != null ? String(p.timeout) : '');
+        setChannelLoaded(true);
+      } catch {
+        // fetch failed — keep channelLoaded=false so saving won't overwrite the stored config
+      }
+      return;
     }
+    setSelectedRestaurant(null);
+    setFormState(initialFormState);
+    resetChannelFields();
+    setChannelLoaded(true); // new restaurant — fresh config is safe to write
     setIsDrawerOpen(true);
   };
 
@@ -209,6 +258,7 @@ const tabs=[
     setIsDrawerOpen(false);
     setSelectedRestaurant(null);
     setFormState(initialFormState);
+    resetChannelFields();
   };
 
   const saveRestaurant = (event: FormEvent<HTMLFormElement>) => {
@@ -229,6 +279,26 @@ const tabs=[
     if (addresses.length) {
       fd.append('addresses',JSON.stringify(addresses));
     }
+
+    // Kitchen channel + printer config — only write it back if we loaded it (don't wipe
+    // existing config on a failed fetch). Merge into existing channelConfig to keep
+    // deviceToken / POS credentials.
+    if (channelLoaded) {
+      fd.append('deliveryChannel', deliveryChannel);
+      const channelConfig: ChannelConfig = { ...existingChannelConfig };
+      if (deliveryChannel === 'client' && printerIp.trim()) {
+        channelConfig.printer = {
+          ip: printerIp.trim(),
+          port: Number(printerPort) || 9100,
+          required: printerRequired,
+          ...(printerTimeout ? { timeout: Number(printerTimeout) } : {}),
+        };
+      } else {
+        delete channelConfig.printer;
+      }
+      fd.append('channelConfig', JSON.stringify(channelConfig));
+    }
+
     if (selectedRestaurant) {
       updateRestaurant.mutateAsync({ id: selectedRestaurant.id, payload: fd });
     } else {
@@ -375,6 +445,47 @@ const tabs=[
                 Ավելացնել այլ հասցեում
               </Button>
             </Field>
+
+            <Field>
+              Канал доставки на кухню
+              <Dropdown
+                value={deliveryChannel}
+                options={channelOptions}
+                placeholder="Канал"
+                onChange={(v) => setDeliveryChannel(v as DeliveryChannel)}
+                triggerDisplay="chip"
+              />
+            </Field>
+
+            {deliveryChannel === 'client' && (
+              <>
+                <Field>
+                  Принтер · IP
+                  <Input
+                    value={printerIp}
+                    onChange={(e) => setPrinterIp(e.target.value)}
+                    placeholder="192.168.1.50 (LAN) или 100.x.y.z (VPN)"
+                  />
+                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Field>
+                    Порт
+                    <Input value={printerPort} onChange={(e) => setPrinterPort(e.target.value)} placeholder="9100" />
+                  </Field>
+                  <Field>
+                    Таймаут (мс)
+                    <Input value={printerTimeout} onChange={(e) => setPrinterTimeout(e.target.value)} placeholder="3000" />
+                  </Field>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                  <input type="checkbox" checked={printerRequired} onChange={(e) => setPrinterRequired(e.target.checked)} />
+                  Обязательная печать (ретраить при сбое — для VPN/прямой печати)
+                </label>
+                <FooterText>
+                  IP пустой — печать с бэкенда отключена (используется SSE/агент). Заполни IP, если бэкенд достаёт принтер по LAN или VPN.
+                </FooterText>
+              </>
+            )}
 
             <Actions>
               <Button type="submit">Պահել</Button>

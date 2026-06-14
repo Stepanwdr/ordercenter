@@ -6,6 +6,22 @@ export interface Address{
   comment?: string;
 }
 
+export interface PrinterConfig {
+  ip?: string;
+  port?: number;
+  required?: boolean;
+  timeout?: number;
+  charset?: string;
+}
+
+export interface ChannelConfig {
+  deviceToken?: string;
+  printer?: PrinterConfig;
+  [key: string]: unknown;
+}
+
+export type DeliveryChannel = 'client' | 'iiko' | 'rkeeper';
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -15,5 +31,7 @@ export interface Restaurant {
   addresses?: Address[];
   phone: string;
   status: RestaurantStatus;
+  deliveryChannel?: DeliveryChannel;
+  channelConfig?: ChannelConfig;
 }
 
