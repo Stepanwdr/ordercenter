@@ -11,6 +11,7 @@
     "dev": "nodemon -r dotenv/config ./bin/www.js",
     "start:prod": "node ./bin/www.js",
     "migrate": "node -r dotenv/config ./bin/migrate.js",
+    "migrate:columns": "node -r dotenv/config ./bin/migrateColumns.js",
     "seed": "node -r dotenv/config ./bin/seed.js"
   },
   "dependencies": {
