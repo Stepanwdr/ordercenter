@@ -169,7 +169,10 @@ export const useCouriersQuery = () => {
 };
 export const useCourierQuery = (id: string) => {
   return useQuery<{ data: Courier }>({
-    queryKey: ['couriers'],
+    // Unique, id-scoped key — must NOT collide with useCouriersQuery's ['couriers']
+    // (list returns Courier[], this returns a single Courier).
+    queryKey: ['courier', id],
+    enabled: !!id,
     queryFn: async () => {
       const res = await api.get<{ data: Courier}>(`/couriers/${id}`);
       return res.data;
@@ -235,6 +238,7 @@ export const useCreateOrderMutation = () => {
     onSuccess: async () => {
       toast.success('Պատվերը ստեղծվեց');
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['couriers'] });
     },
   });
 };
@@ -286,6 +290,7 @@ export const useAssignCourierMutation = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['couriers'] });
     },
   });
 };

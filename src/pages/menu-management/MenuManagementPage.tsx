@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
+import { ImageUploader } from '@shared/ui/ImageUploader';
 import { useRestaurantsQuery } from '@app/hooks/dataApi';
 import {
   useCategoriesQuery,
@@ -279,11 +280,11 @@ const MenuManagementPage = () => {
           <Grid2>
             <Label>
               Ապրանքի անունը
-              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter product name" />
+              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ապրանքի անունը" />
             </Label>
             <Label>
               Կատեգորիան
-              <Dropdown value={categoryId} options={categoryOptions} placeholder="Select category" onChange={setCategoryId} />
+              <Dropdown value={categoryId} options={categoryOptions} placeholder="Ընտրել կատեգորիան" onChange={setCategoryId} />
             </Label>
           </Grid2>
 
@@ -321,8 +322,12 @@ const MenuManagementPage = () => {
           </Grid2>
 
           <Label>
-            Նկար URL
-            <Input value={image} onChange={(event) => setImage(event.target.value)} placeholder="https://..." />
+            Ապրանքի նկարը
+            <ImageUploader
+              value={image || null}
+              onChange={(payload) => setImage(payload?.url ?? '')}
+              label="Քաշել նկարը կամ ընտրել ֆայլ"
+            />
           </Label>
 
           <FooterBar>

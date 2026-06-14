@@ -250,7 +250,7 @@ const editOptions=[
           </Table>
       </TableWrapper>
       <Drawer open={isDrawerOpen || Boolean(selectedCourier)} title={selectedCourier ? "Խմբագրել" : 'Ավելացնել առաքիչ'} onClose={closeDrawer} position="bottom">
-        <form onSubmit={saveCourier}>
+        <CourierForm onSubmit={saveCourier} >
           <FormField>
             Անուն
             <Input
@@ -340,7 +340,7 @@ const editOptions=[
               Չեղարկել
             </Button>
           </div>
-        </form>
+        </CourierForm>
       </Drawer>
       {isLinkModalOpen && (
         <div role="dialog" aria-modal style={{position:'fixed',left:0,top:0,right:0,bottom:0,display:'grid',placeItems:'center',background:'rgba(0,0,0,0.4)'}} onClick={()=>setIsLinkModalOpen(false)}>
@@ -532,6 +532,9 @@ const EmptyOrders = styled.div`
   border-radius: 12px;
 `;
 
+const CourierForm = styled.form`
+
+`
 const ORDER_STATUS_VIEW: Record<string, { label: string; color: string }> = {
   pending: { label: 'Սպասման մեջ', color: '#9ca3ff' },
   accepted: { label: 'Ընդունված', color: '#38bdf8' },

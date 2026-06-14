@@ -4,9 +4,8 @@ import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
-import { StatusBadge } from '@shared/ui/StatusBadge';
 import {useCourierQuery, useUpdateCourierMutation, useUpdateOrderStatusMutation} from '@app/hooks/dataApi';
-import { courierLocationOptions } from '@features/select-courier-status/SelectCourierStatus';
+import { courierLocationOptions, getStatusLabelOptions } from '@features/select-courier-status/SelectCourierStatus';
 import { api } from '@shared/api/base';
 import type { Courier, Order, OrderStatus } from '@shared/types';
 import { toast } from 'react-toastify';
@@ -134,18 +133,44 @@ const EmptyBlock = styled.div`
 `;
 
 const statusLabels: Record<string, string> = {
-  pending: 'Pending', accepted: 'Accepted', cooking: 'Cooking',
-  ready: 'Ready', delivering: 'Delivering', done: 'Done', completed: 'Completed',
+  new: 'Նոր', pending: 'Սպասման մեջ', accepted: 'Ընդունված', cooking: 'Պատրաստվում է',
+  ready: 'Պատրաստ է', delivering: 'Առաքվում է', enRoute: 'Ճանապարհին է',
+  done: 'Ավարտված', completed: 'Կատարված', cancelled: 'Չեղարկված',
 };
+
+const ORDER_STATUS_COLOR: Record<string, string> = {
+  new: '#9ca3ff', pending: '#9ca3ff', accepted: '#38bdf8', cooking: '#f59e0b',
+  ready: '#38bdf8', delivering: '#9d7cff', enRoute: '#9d7cff',
+  done: '#34d399', completed: '#34d399', cancelled: '#ef4444',
+};
+
+const COURIER_STATUS_COLOR: Record<string, string> = {
+  free: '#34d399', busy: '#f59e0b', offline: '#ef4444', dayOff: '#8b5cf6',
+  atRestaurant: '#4f8fff', pickedUp: '#8b5cf6', enRoute: '#f59e0b', delivered: '#34d399',
+};
+
+const StatusPill = styled.span<{ $color: string }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: ${({ $color }) => $color};
+  background: ${({ $color }) => `${$color}22`};
+  border: 1px solid ${({ $color }) => `${$color}44`};
+  white-space: nowrap;
+`;
 
 type TabKey = 'profile' | 'orders' | 'history' | 'edit';
 
-export default function CourierPage() {
-  const { id } = useParams();
+export default function CourierPage({ id: propId, onClose }: { id?: string; onClose?: () => void } = {}) {
+  const params = useParams();
   const navigate = useNavigate();
+  const id = propId ?? params.id; // prop when embedded in a drawer, route param on the page
   const { data: courierApi, isPending, refetch } = useCourierQuery(id ?? '');
   const updateOrderStatus = useUpdateOrderStatusMutation();
-  const updateCourier = useUpdateCourierMutation(() => { refetch(); toast.success('Profile updated'); });
+  const updateCourier = useUpdateCourierMutation(() => { refetch(); toast.success('Պրոֆիլը թարմացվեց'); });
 
   const [tab, setTab] = useState<TabKey>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -176,15 +201,15 @@ export default function CourierPage() {
     }
   }, [courier]);
 
-  if (isPending) return <PageRoot><Title>Loading...</Title></PageRoot>;
-  if (!courier) return <PageRoot><Title>Courier not found</Title></PageRoot>;
+  if (isPending) return <PageRoot><Title>Բեռնում...</Title></PageRoot>;
+  if (!courier) return <PageRoot><Title>Առաքիչը չգտնվեց</Title></PageRoot>;
 
   const handleStatusUpdate = async (orderId: string, status: string) => {
     try {
       await updateOrderStatus.mutateAsync({ id: orderId, status });
       setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: status as OrderStatus } : o)));
-      toast.success('Order status updated');
-    } catch { toast.error('Failed to update status'); }
+      toast.success('Պատվերի կարգավիճակը թարմացվեց');
+    } catch { toast.error('Չհաջողվեց թարմացնել կարգավիճակը'); }
   };
 
   return (
@@ -192,27 +217,31 @@ export default function CourierPage() {
       <Header>
         <TitleGroup>
           <Title>{courier.user?.name}</Title>
-          <Subtitle>Courier profile and order management</Subtitle>
+          <Subtitle>Առաքիչի պրոֆիլ և պատվերներ</Subtitle>
         </TitleGroup>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <StatusBadge status={courier.status} />
-          <Button variant="secondary" onClick={() => navigate('/couriers')}>Back</Button>
+          <StatusPill $color={COURIER_STATUS_COLOR[courier.status] ?? '#64748b'}>
+            {getStatusLabelOptions[courier.status] ?? courier.status}
+          </StatusPill>
+          <Button variant="secondary" onClick={() => (onClose ? onClose() : navigate('/couriers'))}>
+            {onClose ? 'Փակել' : 'Հետ'}
+          </Button>
         </div>
       </Header>
 
       <Tabs>
-        <Tab $active={tab === 'profile'} onClick={() => setTab('profile')}>Profile</Tab>
-        <Tab $active={tab === 'orders'} onClick={() => setTab('orders')}>Active orders ({activeOrders.length})</Tab>
-        <Tab $active={tab === 'history'} onClick={() => setTab('history')}>History ({completedOrders.length})</Tab>
-        <Tab $active={tab === 'edit'} onClick={() => setTab('edit')}>Edit</Tab>
+        <Tab $active={tab === 'profile'} onClick={() => setTab('profile')}>Պրոֆիլ</Tab>
+        <Tab $active={tab === 'orders'} onClick={() => setTab('orders')}>Ակտիվ պատվերներ ({activeOrders.length})</Tab>
+        <Tab $active={tab === 'history'} onClick={() => setTab('history')}>Պատմություն ({completedOrders.length})</Tab>
+        <Tab $active={tab === 'edit'} onClick={() => setTab('edit')}>Խմբագրել</Tab>
       </Tabs>
 
       {tab === 'profile' && (
         <>
           <Card>
-            <InfoRow><Label>Phone</Label><Value>{courier.user?.phone || '—'}</Value></InfoRow>
-            <InfoRow><Label>Email</Label><Value>{courier.user?.email || '—'}</Value></InfoRow>
-            <InfoRow><Label>Restaurant</Label><Value>{courier.restaurant?.name || '—'}</Value></InfoRow>
+            <InfoRow><Label>Հեռախոս</Label><Value>{courier.user?.phone || '—'}</Value></InfoRow>
+            <InfoRow><Label>Էլ. փոստ</Label><Value>{courier.user?.email || '—'}</Value></InfoRow>
+            <InfoRow><Label>Ռեստորան</Label><Value>{courier.restaurant?.name || '—'}</Value></InfoRow>
             {/*<InfoRow><Label>Telegram ID</Label><Value>{courier.telegramId || 'Not connected'}</Value></InfoRow>*/}
             {/*<InfoRow><Label>Location</Label><Value>{courier.lat && courier.lng ? `${Number(courier.lat).toFixed(4)}, ${Number(courier.lng).toFixed(4)}` : '—'}</Value></InfoRow>*/}
           </Card>
@@ -240,19 +269,21 @@ export default function CourierPage() {
                 </>
               );
             })()}
-            <div style={{ opacity: 0.6, fontSize: 13, marginTop: 12 }}>Completed orders: {completedOrders.length}</div>
+            <div style={{ opacity: 0.6, fontSize: 13, marginTop: 12 }}>Ավարտված պատվերներ՝ {completedOrders.length}</div>
           </Card>
         </>
       )}
 
       {tab === 'orders' && (
         <>
-          {activeOrders.length === 0 && <EmptyBlock>No active orders</EmptyBlock>}
+          {activeOrders.length === 0 && <EmptyBlock>Ակտիվ պատվերներ չկան</EmptyBlock>}
           {activeOrders.map((order) => (
             <OrderCard key={order.id}>
               <OrderHeader>
                 <OrderCode>#{order.code}</OrderCode>
-                <StatusBadge status={order.status} />
+                <StatusPill $color={ORDER_STATUS_COLOR[order.status] ?? '#64748b'}>
+                  {statusLabels[order.status] ?? order.status}
+                </StatusPill>
               </OrderHeader>
               <OrderMeta>
                 <div>🏪 {order.restaurant?.name}</div>
@@ -277,12 +308,14 @@ export default function CourierPage() {
 
       {tab === 'history' && (
         <>
-          {completedOrders.length === 0 && <EmptyBlock>No completed orders</EmptyBlock>}
+          {completedOrders.length === 0 && <EmptyBlock>Ավարտված պատվերներ չկան</EmptyBlock>}
           {completedOrders.map((order) => (
             <OrderCard key={order.id}>
               <OrderHeader>
                 <OrderCode>#{order.code}</OrderCode>
-                <StatusBadge status={order.status} />
+                <StatusPill $color={ORDER_STATUS_COLOR[order.status] ?? '#64748b'}>
+                  {statusLabels[order.status] ?? order.status}
+                </StatusPill>
               </OrderHeader>
               <OrderMeta>
                 <div>🏪 {order.restaurant?.name}</div>
@@ -297,19 +330,19 @@ export default function CourierPage() {
       {tab === 'edit' && (
         <Card>
           <FormField>
-            <Label>Name</Label>
+            <Label>Անուն</Label>
             <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           </FormField>
           <FormField>
-            <Label>Phone</Label>
+            <Label>Հեռախոս</Label>
             <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
           </FormField>
           <FormField>
-            <Label>Email</Label>
+            <Label>Էլ. փոստ</Label>
             <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
           </FormField>
           <FormField>
-            <Label>Status</Label>
+            <Label>Կարգավիճակ</Label>
             <Dropdown
               value={editForm.status}
               options={courierLocationOptions}
@@ -318,7 +351,7 @@ export default function CourierPage() {
             />
           </FormField>
           <FormField>
-            <Label>Max orders (capacity)</Label>
+            <Label>Առավելագույն պատվերներ (բեռնվածություն)</Label>
             <Input
               type="number"
               min={0}
@@ -330,7 +363,7 @@ export default function CourierPage() {
             variant="primary"
             onClick={() => updateCourier.mutateAsync({ id: id!, payload: editForm })}
           >
-            Save
+            Պահպանել
           </Button>
         </Card>
       )}

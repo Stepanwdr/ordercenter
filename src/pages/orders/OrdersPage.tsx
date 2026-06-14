@@ -20,10 +20,11 @@ import {
   useGetMe
 } from '@app/hooks/dataApi';
 import { toast } from 'react-toastify';
-import {courierLocationOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
+import {courierLocationOptions, getStatusLabelOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
 import {formatTime,getDuration} from "@shared/utils/date.ts";
 import { useDebounce } from '@shared/utils/useDebounce.ts';
 import CouriersPage from "@pages/couriers/CouriersPage.tsx";
+import CourierPage from "@pages/couriers/CourierPage.tsx";
 
 const Header = styled.div`
     display: flex;
@@ -82,7 +83,6 @@ const ControlsRow = styled.div`
     display: flex;
     gap: 14px;
     align-items: center;
-    flex-wrap: wrap;
 `;
 
 const TableSection = styled.section`
@@ -97,6 +97,120 @@ const TableSection = styled.section`
     }
   
 `;
+
+const ContentRow = styled.div`
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+`;
+
+const CouriersAside = styled.aside`
+    width: 320px;
+    flex-shrink: 0;
+    margin-top: 20px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    @media (max-width: 1200px) { display: none; }
+`;
+
+const AsideTitle = styled.h3`
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.78);
+`;
+
+const CourierCard = styled.button`
+    display: grid;
+    gap: 8px;
+    text-align: left;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    &:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.16); }
+`;
+
+const CourierTop = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+`;
+
+const CourierName = styled.span`
+    font-weight: 700;
+    font-size: 0.95rem;
+`;
+
+const StatusChip = styled.span<{ $color: string }>`
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: ${({ $color }) => $color};
+    background: ${({ $color }) => `${$color}22`};
+    border: 1px solid ${({ $color }) => `${$color}44`};
+    white-space: nowrap;
+`;
+
+const CourierMeta = styled.div`
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.5;
+`;
+
+const LoadRow = styled.div`
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 0.8rem;
+`;
+
+const LoadFree = styled.span<{ $full: boolean }>`
+    font-weight: 600;
+    color: ${({ $full }) => ($full ? '#ef4444' : '#34d399')};
+`;
+
+const LoadTrack = styled.div`
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+`;
+
+const LoadFill = styled.div<{ $pct: number; $full: boolean }>`
+    height: 100%;
+    width: ${({ $pct }) => $pct}%;
+    background: ${({ $full }) => ($full ? '#ef4444' : '#34d399')};
+    transition: width 0.2s ease;
+`;
+
+const AsideEmpty = styled.div`
+    padding: 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.4);
+`;
+
+const STATUS_COLOR: Record<string, string> = {
+  free: '#34d399',
+  busy: '#f59e0b',
+  offline: '#ef4444',
+  dayOff: '#8b5cf6',
+  atRestaurant: '#4f8fff',
+  pickedUp: '#8b5cf6',
+  enRoute: '#f59e0b',
+  delivered: '#34d399',
+};
 
 const ItemChips = styled.div`
     display: flex;
@@ -154,6 +268,7 @@ const OrdersPage = () => {
   const [activeStatus, setActiveStatus] = useState<(typeof statuses)[number]>('all');
   const [selectedCourier, setSelectedCourier] = useState('all');
   const [selectedOrder,setSelectedOrder] = useState<Order | null>(null);
+  const [courierDetailsId, setCourierDetailsId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   // ISO instants for the query + filter (the picker returns real Date objects).
@@ -411,15 +526,8 @@ const OrdersPage = () => {
               placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
           </div>
 
-          <Dropdown label={'Առաքիչ'} value={courierId} options={courierOptions} placeholder="Ընտրել առաքիչ" onChange={setCourierId} />
         </Controls>
         <ControlsRow>
-          <DateRangePicker
-            value={dateRange}
-            onChange={setDateRange}
-            locale="hy-AM"
-            labels={{ placeholder: 'Ընտրեք ամսաթիվ', clear: 'Մաքրել', apply: 'Կիրառել' }}
-          />
           <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {sortedOrders.length} պատվեր  </span>
         </ControlsRow>
       </Toolbar>
@@ -435,18 +543,63 @@ const OrdersPage = () => {
             {statusLabels[status]}
           </StatusTab>
         ))}
+        <ControlsRow>
+          <Dropdown  value={courierId} options={courierOptions} placeholder="Ընտրել առաքիչ" onChange={setCourierId} />
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            locale="hy-AM"
+            labels={{ placeholder: 'Ընտրեք ամսաթիվ', clear: 'Մաքրել', apply: 'Կիրառել' }}
+          />
+        </ControlsRow>
       </StatusTabs>
 
-      <TableSection>
-        <Table<Order> rows={pageRows} columns={columns} className={'orders-table'} sortColumns={sortColumns} onSortColumnsChange={setSortColumns} />
-        <Pagination currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
-      </TableSection>
+      <ContentRow>
+        <TableSection style={{ flex: 1, minWidth: 0 }}>
+          <Table<Order> rows={pageRows} columns={columns} className={'orders-table'} sortColumns={sortColumns} onSortColumnsChange={setSortColumns} />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
+        </TableSection>
+
+        <CouriersAside>
+          <AsideTitle>Առաքիչներ ({allCouriers.length})</AsideTitle>
+          {allCouriers.length === 0 && <AsideEmpty>Առաքիչներ չկան</AsideEmpty>}
+          {allCouriers.map((courier) => {
+            const cid = (courier as any).userId ?? courier.id;
+            const max = courier.maxOrders ?? 0;
+            const active = courier.activeOrdersCount ?? 0;
+            const free = courier.availableSlots ?? Math.max(0, max - active);
+            const full = free <= 0;
+            const pct = max > 0 ? Math.min(100, Math.round((active / max) * 100)) : 0;
+            const color = STATUS_COLOR[courier.status] ?? '#64748b';
+            return (
+              <CourierCard key={cid} type="button" onClick={() => setCourierDetailsId(String(cid))}>
+                <CourierTop>
+                  <CourierName>{courier.user?.name || courier.user?.email || 'Առաքիչ'}</CourierName>
+                  <StatusChip $color={color}>{getStatusLabelOptions[courier.status] ?? courier.status}</StatusChip>
+                </CourierTop>
+                <LoadRow>
+                  <span>Բեռնվածություն՝ <b>{active} / {max}</b></span>
+                  <LoadFree $full={full}>{full ? 'Լրացված' : `Ազատ՝ ${free}`}</LoadFree>
+                </LoadRow>
+                <LoadTrack><LoadFill $pct={pct} $full={full} /></LoadTrack>
+                <CourierMeta>
+                  {courier.user?.phone && <div>📞 {courier.user.phone}</div>}
+                  {courier.restaurant?.name && <div>🏪 {courier.restaurant.name}</div>}
+                </CourierMeta>
+              </CourierCard>
+            );
+          })}
+        </CouriersAside>
+      </ContentRow>
 
       <Drawer open={isCreateOpen} position="bottom" title="Ստեղծել նոր պատվեր" onClose={() => setCreateOpen(false)}>
         <CreateOrderFlow onClose={()=>setCreateOpen(false)}/>
       </Drawer>
       <Drawer open={Boolean(selectedOrder)} position="bottom" title="Առաքիչների ցանկ" onClose={() => setSelectedOrder(null)}>
         <CouriersPage selectedOrder={selectedOrder} handleCourierAsignToOrder={handleCourierAsignToOrder} />
+      </Drawer>
+      <Drawer open={Boolean(courierDetailsId)} position="right" title="Առաքիչ" onClose={() => setCourierDetailsId(null)}>
+        {courierDetailsId && <CourierPage id={courierDetailsId} onClose={() => setCourierDetailsId(null)} />}
       </Drawer>
     </div>
   );

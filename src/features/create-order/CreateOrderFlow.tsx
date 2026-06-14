@@ -178,7 +178,6 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
         )}
         <Dropdowns>
           <Dropdown label={'Ռետտորան'} value={restaurantId} options={restaurantOptions} placeholder="Ընտրել ռեստորան" onChange={(val) => { setRestaurantId(val) }} />
-          {/*<Dropdown label={'Մենյու'} value={menuId} options={menuOptions} placeholder="Ընտրել մենյու" onChange={setMenuId} />*/}
         </Dropdowns>
         <SearchPanel>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Որոնել ապրանք..." />
@@ -198,13 +197,13 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
             ))}
           </Chips>
         </SearchPanel>
-        <MenuItemsSell>
+        {filteredItems.length > 0 &&<MenuItemsSell>
           <Panel>
-            <MenuItems style={{overflow: 'auto',maxHeight:"600px"}}>
+            <MenuItems style={{overflow: 'auto', maxHeight: "600px"}}>
               {filteredItems.map((item) => (
                 <DishCard key={item.id}>
                   <DishImage>
-                    {item.image ? <img src={item.image} alt={item.name} /> : null}
+                    {item.image ? <img src={item.image} alt={item.name}/> : null}
                   </DishImage>
                   <DishName>{item.name}</DishName>
                   <Muted>{item.description ?? 'No description'}</Muted>
@@ -219,7 +218,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
               ))}
             </MenuItems>
           </Panel>
-        </MenuItemsSell>
+        </MenuItemsSell>}
         {cart.length > 0 && <CustomerBlock setFormData={(field, value) => setFormData(prevState => ({...prevState, [field]: value}))}
                         formData={formData}/>
         }
@@ -259,12 +258,12 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
       </Main>
       <OrderPanel>
         <Title style={{ fontSize: '1.4rem' }}>Պատվեր</Title>
-        <CartList>
+         <CartList>
           {cart.map((item) => (
             <CartRow key={item.id}>
-              <div  style={{display:"flex",alignItems:"center",gap:'5px'}}>
-                <DishImage style={{width:"60px",margin:'10px 0'}}>
-                  {item.image ? <img src={item.image} alt={item.name} /> : null}
+              <div style={{display: "flex", alignItems: "center", gap: '5px'}}>
+                <DishImage style={{width: "60px", margin: '10px 0'}}>
+                  {item.image ? <img src={item.image} alt={item.name}/> : null}
                 </DishImage>
                 <DishName>{item.name}</DishName>
                 <Muted>{toCurrency(Number(item.price))}</Muted>

@@ -187,7 +187,8 @@ const Title = styled.h2`
 `;
 
 const Content = styled.div`
-  overflow: auto;
+    overflow: auto;
+    max-height: calc(100vh - 150px);
 `;
 
 export const Drawer = ({
