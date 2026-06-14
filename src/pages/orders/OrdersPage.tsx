@@ -9,6 +9,7 @@ import type {Column, SortColumn} from 'react-data-grid';
 import type {Courier, CourierStatus, Order, OrderStatus} from '@shared/types';
 import { Drawer } from '@shared/ux/Drawer';
 import { Pagination } from '@shared/ux/Pagination.tsx';
+import { DateRangePicker, type DateRange } from '@shared/ui/DateRangePicker';
 import {
   useCouriersQuery,
   useOrdersQuery,
@@ -154,9 +155,13 @@ const OrdersPage = () => {
   const [selectedCourier, setSelectedCourier] = useState('all');
   const [selectedOrder,setSelectedOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+  // ISO instants for the query + filter (the picker returns real Date objects).
+  const dateFrom = dateRange.start ? dateRange.start.toISOString() : undefined;
+  const dateTo = dateRange.end ? dateRange.end.toISOString() : undefined;
   const debouncedSearch = useDebounce(search, 500);
   const { data: couriersResponse } = useCouriersQuery();
-  const { data: apiOrders } = useOrdersQuery({courierId,status: activeStatus, search: debouncedSearch});
+  const { data: apiOrders } = useOrdersQuery({courierId,status: activeStatus, search: debouncedSearch, dateFrom, dateTo, limit: 1000});
 
   const allCouriers = couriersResponse?.data ?? [];
   // Filter couriers by selected restaurant if present
@@ -176,12 +181,25 @@ const OrdersPage = () => {
   // );
   const couriers = [] as Courier[];
 
+  // Calendar range filter on createdAt (client-side, inclusive). The picker already
+  // carries exact instants (start/end Date with their times), so compare directly.
+  const dateFilteredOrders = useMemo(() => {
+    const { start, end } = dateRange;
+    if (!start && !end) return orders;
+    const fromMs = start ? start.getTime() : -Infinity;
+    const toMs = end ? end.getTime() : Infinity;
+    return orders.filter((o) => {
+      const t = new Date(o.createdAt).getTime();
+      return t >= fromMs && t <= toMs;
+    });
+  }, [orders, dateRange]);
+
   const sortedOrders = useMemo(() => {
-    if (sortColumns.length === 0) return orders;
+    if (sortColumns.length === 0) return dateFilteredOrders;
 
     const { columnKey, direction } = sortColumns[0];
 
-    return [...orders].sort((a: any, b: any) => {
+    return [...dateFilteredOrders].sort((a: any, b: any) => {
       const aValue = a[columnKey];
       const bValue = b[columnKey];
 
@@ -198,7 +216,7 @@ const OrdersPage = () => {
 
       return 0;
     });
-  }, [orders, sortColumns]);
+  }, [dateFilteredOrders, sortColumns]);
   const updateOrderPayMethodMutation = useUpdateOrderPayMethodMutation();
 
   const handlePaidMethodChange = useCallback(async (id: string, value: PaymentMethod) => {
@@ -252,22 +270,6 @@ const OrdersPage = () => {
       toast.error(err?.message || 'Անհաջող հանձնարարություն');
     }
   };
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const filteredOrders = useMemo(
-    () =>
-      (orders).filter((order) => {
-        const query = search.toLowerCase().trim();
-        const matchesSearch =
-          query === '' ||
-          [order.orderCode, order.customerName, order.restaurant, order.courierProfile].join(' ').toLowerCase().includes(query);
-
-        const matchesStatus = activeStatus === 'all' || order?.status === activeStatus;
-        const matchesCourier = selectedCourier === 'all' || order.courierProfile.id === selectedCourier;
-
-        return matchesSearch && matchesStatus && matchesCourier;
-      }),
-    [orders, search, activeStatus, selectedCourier]
-  );
 
   const columns = useMemo<Column<Order>[]>(
     () => [
@@ -386,7 +388,7 @@ const OrdersPage = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
-  }, [search, activeStatus, selectedCourier]);
+  }, [search, activeStatus, selectedCourier, dateFrom, dateTo]);
 
 
   return (
@@ -412,7 +414,13 @@ const OrdersPage = () => {
           <Dropdown label={'Առաքիչ'} value={courierId} options={courierOptions} placeholder="Ընտրել առաքիչ" onChange={setCourierId} />
         </Controls>
         <ControlsRow>
-          <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {filteredOrders.length} պատվեր  </span>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            locale="hy-AM"
+            labels={{ placeholder: 'Ընտրեք ամսաթիվ', clear: 'Մաքրել', apply: 'Կիրառել' }}
+          />
+          <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {sortedOrders.length} պատվեր  </span>
         </ControlsRow>
       </Toolbar>
 

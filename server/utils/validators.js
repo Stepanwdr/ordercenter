@@ -8,6 +8,18 @@ export const OrderPaymentMethod = ['CASH' , 'ONLINE' , 'BANK-POS' , 'IDRAM'];
 export const OrderStatus = ['pending','accepted','done','cooking','ready','picked_up','delivering','completed','cancelled','enRoute'];
 const orderStatusSchema = z.enum(OrderStatus);
 
+// Kitchen delivery channel for a restaurant (selects the order-dispatch adapter).
+const deliveryChannelSchema = z.enum(['client', 'iiko', 'rkeeper']);
+// Per-channel config: an object, or a JSON string (multipart form fields arrive as strings).
+const channelConfigSchema = z
+  .preprocess((v) => {
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch { return undefined; }
+    }
+    return v;
+  }, z.record(z.any()))
+  .optional();
+
 export const schemas = {
   register: z.object({
     email: z.string().email(),
@@ -33,6 +45,8 @@ export const schemas = {
     lat: z.coerce.number().min(-90).max(90),
     lng: z.coerce.number().min(-180).max(180),
     phone: z.string().min(2).max(12).optional(),
+    deliveryChannel: deliveryChannelSchema.optional(),
+    channelConfig: channelConfigSchema,
     addresses: z.preprocess(
       (v) => {
         if (typeof v === 'string') {
@@ -61,6 +75,8 @@ export const schemas = {
     lat: z.coerce.number().min(-90).max(90).optional(),
     lng: z.coerce.number().min(-180).max(180).optional(),
     phone: z.string().min(2).max(12).optional(),
+    deliveryChannel: deliveryChannelSchema.optional(),
+    channelConfig: channelConfigSchema,
     addresses: z.preprocess(
       (v) => {
         if (typeof v === 'string') {

@@ -258,23 +258,20 @@ const tabs=[
         {displayedRestaurants.map((restaurant) => (
           <Card key={restaurant.id}>
             <CardHeader>
-              <Image>
-                <img src={'https://assets.cntraveller.in/photos/6916c7e2b3040f358c22b7ed/master/w_1600%2Cc_limit/DSC01647.JPG'} alt=""/>
-              </Image>
               <div>
                 <CardTitle>{restaurant.name}</CardTitle>
                 <CardMeta>{restaurant.cuisine}</CardMeta>
               </div>
             </CardHeader>
             <CardContent>
-              {/*{restaurant.photo && <Image>*/}
-              {/*  <img*/}
-              {/*    src={(restaurant.photo.startsWith('http') || restaurant.photo.startsWith('//'))*/}
-              {/*      ? restaurant.photo*/}
-              {/*      : `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}${restaurant.photo}`}*/}
-              {/*    alt={restaurant.name}*/}
-              {/*  />*/}
-              {/*</Image>}*/}
+              {restaurant.photo && <Image>
+                <img
+                  src={(restaurant.photo.startsWith('http') || restaurant.photo.startsWith('//'))
+                    ? restaurant.photo
+                    : `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}${restaurant.photo}`}
+                  alt={restaurant.name}
+                />
+              </Image>}
               <AddressList>
                 {restaurant.addresses?.map((address: Address, index: number) => (
                   <AddressItem key={`${restaurant.id}-address-${index}`}>
@@ -301,7 +298,7 @@ const tabs=[
         ))}
       </Grid>
 
-      <Drawer open={isDrawerOpen} title={`${mode === 'Create' ? 'Ստեղծել' : 'Խմբագրել'} ռեստորանը`} onClose={closeForm} position="bottom">
+      <Drawer open={isDrawerOpen} title={`${mode === 'Create' ? 'Ստեղծել' : 'Խմբագրել'} ռեստորան`} onClose={closeForm} position="bottom">
 
         <form onSubmit={saveRestaurant}>
           <Wrapper>
@@ -331,13 +328,13 @@ const tabs=[
                 placeholder="+374 98 888 888"
               />
             </Field>
-            {/*<label>Фото</label>*/}
-            {/*<ImageUploader value={photoUrl} onChange={(payload)=>{*/}
-            {/*  console.log(payload)*/}
-            {/*  setPhotUrl(payload?.url || '')*/}
-            {/*  setPhotoFile(payload?.file as File | null)*/}
-            {/*}} />*/}
-            {/*<Input placeholder="URL или оставьте пустым" value={photoUrl} onChange={(e) => setPhotoFile(e.target.value)} />*/}
+            <label>Фото</label>
+            <ImageUploader value={photoUrl} onChange={(payload)=>{
+              console.log(payload)
+              setPhotUrl(payload?.url || '')
+              setPhotoFile(payload?.file as File | null)
+            }} />
+            <Input placeholder="URL или оставьте пустым" value={photoUrl} onChange={(e) => setPhotUrl(e.target.value)} />
             <Field>
               Հասցեներ
               <div>

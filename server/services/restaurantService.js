@@ -3,7 +3,10 @@ import AppError from '../utils/AppError.js';
 
 class RestaurantService {
   static async listRestaurants() {
+    // channelConfig holds per-channel secrets (device tokens, iiko apiLogin, ...).
+    // The list is also served publicly (registration page) — never expose it here.
     return Restaurant.findAll({
+      attributes: { exclude: ['channelConfig'] },
       include: [{ model: User, as: 'owner' }, { model: RestaurantAddress, as: 'addresses' }],
       order: [['createdAt', 'DESC']],
     });

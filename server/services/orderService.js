@@ -4,6 +4,7 @@ import telegramService from './telegramService.js';
 import AppError from '../utils/AppError.js';
 import { statusFieldMap } from '../utils/orderFlow.js';
 import { getIo } from './socket.js';
+import kitchenDispatcher from './kitchen/kitchenDispatcher.js';
 const generateCode=()=> {
   const now = new Date();
 
@@ -61,11 +62,20 @@ const orderLinkExtras = (orderId) => {
 
 class OrderService {
   static async listOrders(query = {}) {
-    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC', status, search, courierId, restaurantId } = query;
+    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC', status, search, courierId, restaurantId, dateFrom, dateTo } = query;
 
     const safeSortBy = ORDER_SORTABLE_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
     const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     const where = {};
+    // Calendar range filter on createdAt. The client (DateRangePicker) sends exact
+    // ISO instants for the start/end of the chosen range — parse them directly.
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      const from = dateFrom ? new Date(dateFrom) : null;
+      const to = dateTo ? new Date(dateTo) : null;
+      if (from && !Number.isNaN(from.getTime())) where.createdAt[Op.gte] = from;
+      if (to && !Number.isNaN(to.getTime())) where.createdAt[Op.lte] = to;
+    }
     if (status && status !== 'all') {
       if (status === 'new') {
         where.courierId = { [Op.is]: null };
@@ -122,7 +132,7 @@ class OrderService {
   }
 
   static async createOrder(payload, authUser) {
-    return sequelize.transaction(async (transaction) => {
+    const created = await sequelize.transaction(async (transaction) => {
       const operatorId =  authUser.userId;
       const [operator, restaurant] = await Promise.all([
         User.findByPk(operatorId, { transaction }),
@@ -226,6 +236,18 @@ class OrderService {
 
       return order;
     });
+
+    // After the transaction commits, hand the order to its restaurant's kitchen
+    // channel (Adapter/Strategy). A channel failure must NOT roll back the created
+    // order — the dispatcher marks it dispatchStatus='failed' for retry/attention.
+    try {
+      await kitchenDispatcher.dispatch(created);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[kitchen] dispatch error', err?.message || err);
+    }
+
+    return created;
   }
 
   static async assignCourier(orderId, courierId) {

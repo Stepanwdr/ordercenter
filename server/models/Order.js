@@ -25,6 +25,36 @@ Order.init(
       allowNull: false,
       defaultValue: 0,
     },
+    // Kitchen dispatch state (filled by the order dispatcher / channel adapter).
+    //   pending  : created, not yet handed to a channel
+    //   sent     : delivered to the channel (queued on tablet / posted to iiko)
+    //   accepted : kitchen acknowledged (tablet ack / iiko webhook)
+    //   failed   : adapter errored — needs retry/attention
+    dispatchStatus: {
+      type: DataTypes.ENUM('pending', 'sent', 'accepted', 'failed'),
+      allowNull: false,
+      defaultValue: 'pending',
+    },
+    // External order id in the POS system (iiko delivery id, r_keeper id). Null for 'client'.
+    externalId: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    },
+    dispatchedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    // Retry bookkeeping for failed dispatches (iiko/r_keeper). The retry worker
+    // only picks 'failed' orders whose nextDispatchAt is due and attempts < cap.
+    dispatchAttempts: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    nextDispatchAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     customerPhone: {
       type: DataTypes.STRING(64),
       allowNull: true,

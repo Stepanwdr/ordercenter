@@ -9,6 +9,8 @@ import courierAppRouter from './routes/courierApp.js';
 import { initPolling } from './services/telegramBot.js';
 import path from 'path';
 import uploadRouter from './routes/upload.js';
+import kitchenRouter from './routes/kitchen.js';
+import { initKitchenRetry } from './services/kitchen/retryWorker.js';
 import authorization from './middlewares/authorization.js';
 import errorHandler from './middlewares/errorHandler.js';
 
@@ -69,6 +71,9 @@ app.use(
   express.static(path.resolve('uploads')),
 );
 app.use('/upload', uploadRouter);
+// Kitchen channel endpoints (SSE stream / ack / POS webhooks) authenticate with a
+// per-restaurant device token, not the user JWT — mount before the auth layer.
+app.use('/kitchen', kitchenRouter);
 app.use('/courier-app', courierAppRouter);
 app.use(authorization);
 app.use(router);
@@ -85,6 +90,14 @@ try {
   // ignore bot init errors
   // eslint-disable-next-line no-console
   console.error('Telegram bot init error', err?.message || err);
+}
+
+// background worker: retry failed kitchen dispatches (iiko/r_keeper)
+try {
+  initKitchenRetry();
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.error('Kitchen retry worker init error', err?.message || err);
 }
 
 export default app;

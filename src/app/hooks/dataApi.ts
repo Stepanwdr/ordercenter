@@ -46,7 +46,9 @@ export interface query {
   status?:string,
   search?:string,
   courierId?:string,
-  restaurantId?:string
+  restaurantId?:string,
+  dateFrom?:string,
+  dateTo?:string
 }
 
 export const useOrdersQuery = (query:query) =>{

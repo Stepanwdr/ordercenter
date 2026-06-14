@@ -7,6 +7,8 @@ import {useRestaurantsQuery, useCreateOrderMutation} from '@app/hooks/dataApi';
 import { useCategoriesQuery, useMenuItemsQuery, useMenusQuery } from '@app/hooks/menuApi';
 import type { MenuItem } from '@shared/types/Menu';
 import {CustomerBlock} from "@features/create-order/CustomerBlock.tsx";
+import { toast } from 'react-toastify';
+import { getDrafts, saveDraft, deleteDraft, type OrderDraft } from '@features/create-order/drafts';
 
 type CartItem = MenuItem & { count: number };
 
@@ -35,7 +37,8 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   const [restaurantId, setRestaurantId] = useState('');
   const [courierId, setCourierId] = useState('');
   const menus = useMenusQuery(restaurantId || null).data ?? [];
-  const [menuId, setMenuId] = useState('');
+  const menuId = menus.length && menus[0].id;
+
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const items = useMenuItemsQuery(menuId || null, debouncedSearch).data ?? [];
 
@@ -44,9 +47,11 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pickupTime, setPickupTime] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
+  const [draftId, setDraftId] = useState<string | undefined>(undefined);
+  const [drafts, setDrafts] = useState<OrderDraft[]>(() => getDrafts());
 
   const restaurantOptions = restaurants.map((r) => ({ value: r.id, label: r.name }));
-  const menuOptions = menus.map((m) => ({ value: m.id, label: m.name }));
+
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -101,8 +106,41 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
     };
     if (courierId) payload.courierId = courierId;
     await mutate.mutateAsync(payload);
+    if (draftId) {
+      deleteDraft(draftId); // order sent — drop its draft
+      setDraftId(undefined);
+    }
     onClose()
   }
+
+  const isEmpty = !restaurantId && cart.length === 0;
+
+  const handleSaveDraft = () => {
+    if (isEmpty) {
+      toast.info('Պահպանելու բան չկա');
+      return;
+    }
+    const saved = saveDraft({ id: draftId, restaurantId, cart, formData, pickupTime, deliveryFee });
+    setDraftId(saved.id);
+    setDrafts(getDrafts());
+    toast.success('Սևագիրը պահպանվեց');
+    onClose(); // set aside
+  };
+
+  const handleRestoreDraft = (d: OrderDraft) => {
+    setRestaurantId(d.restaurantId || '');
+    setCart(d.cart || []);
+    setFormData((prev) => ({ ...prev, ...d.formData }));
+    setPickupTime(d.pickupTime || '');
+    setDeliveryFee(d.deliveryFee || '');
+    setDraftId(d.id);
+  };
+
+  const handleDeleteDraft = (id: string) => {
+    deleteDraft(id);
+    setDrafts(getDrafts());
+    if (draftId === id) setDraftId(undefined);
+  };
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setDebouncedSearch(search.trim());
@@ -114,9 +152,33 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   return (
     <Page>
       <Main>
+        {drafts.length > 0 && (
+          <DraftsPanel>
+            <DraftsTitle>Սևագրեր ({drafts.length})</DraftsTitle>
+            <DraftsList>
+              {drafts.map((d) => {
+                const rName = restaurants.find((r) => r.id === d.restaurantId)?.name || 'Ռեստоран ?';
+                const dTotal = (d.cart || []).reduce((s, it) => s + Number(it.price) * it.count, 0);
+                const isCurrent = d.id === draftId;
+                return (
+                  <DraftChip key={d.id} $active={isCurrent}>
+                    <DraftInfo onClick={() => handleRestoreDraft(d)}>
+                      <strong>{rName}</strong>
+                      <span>
+                        {d.formData?.customerName ? `${d.formData.customerName} · ` : ''}
+                        {(d.cart || []).length} ապр. · {toCurrency(dTotal)}
+                      </span>
+                    </DraftInfo>
+                    <DraftDel onClick={() => handleDeleteDraft(d.id)} title="Ջնջել">✕</DraftDel>
+                  </DraftChip>
+                );
+              })}
+            </DraftsList>
+          </DraftsPanel>
+        )}
         <Dropdowns>
           <Dropdown label={'Ռետտորան'} value={restaurantId} options={restaurantOptions} placeholder="Ընտրել ռեստորան" onChange={(val) => { setRestaurantId(val) }} />
-          <Dropdown label={'Մենյու'} value={menuId} options={menuOptions} placeholder="Ընտրել մենյու" onChange={setMenuId} />
+          {/*<Dropdown label={'Մենյու'} value={menuId} options={menuOptions} placeholder="Ընտրել մենյու" onChange={setMenuId} />*/}
         </Dropdowns>
         <SearchPanel>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Որոնել ապրանք..." />
@@ -222,13 +284,64 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
           <TotalRow><strong>Գումարը</strong><strong>{toCurrency(total)}</strong></TotalRow>
         </Totals>
         <FooterActions>
-          <Button type="button" variant="secondary">Պահպանել</Button>
+          <Button type="button" variant="secondary" onClick={handleSaveDraft}>Պահպանել</Button>
           <Button type="button" variant="ghost" onClick={handleCreatOrder}>Ուղարկել խոհանոց</Button>
         </FooterActions>
       </OrderPanel>
     </Page>
   );
 };
+
+const DraftsPanel = styled.div`
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+`;
+const DraftsTitle = styled.div`
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #f59e0b;
+  text-transform: uppercase;
+`;
+const DraftsList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+const DraftChip = styled.div<{ $active?: boolean }>`
+  display: flex;
+  align-items: stretch;
+  border: 1px solid ${({ $active }) => ($active ? 'rgba(245,158,11,0.7)' : 'rgba(255,255,255,0.12)')};
+  background: ${({ $active }) => ($active ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)')};
+  border-radius: 10px;
+  overflow: hidden;
+`;
+const DraftInfo = styled.button`
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #fff;
+  padding: 8px 12px;
+  cursor: pointer;
+  strong { font-size: 0.9rem; }
+  span { font-size: 0.78rem; color: rgba(255,255,255,0.6); }
+  &:hover { background: rgba(255,255,255,0.04); }
+`;
+const DraftDel = styled.button`
+  border: none;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  padding: 0 12px;
+  cursor: pointer;
+  &:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+`;
 
 const InputWrapper = styled.div`
 display: flex;
@@ -348,6 +461,9 @@ const Chip = styled.button<{ $active?: boolean }>`
 const CartList = styled.div`
     display: grid;
     gap: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 `;
 
 const CartRow = styled.div`
@@ -398,11 +514,12 @@ const FooterActions = styled.div`
 `;
 
 const OrderPanel = styled(Panel)`
-min-height: 80vh;   
-   display: flex;
-    flex-direction: column;
+    align-self: start;            /* don't stretch to the main column's height */
     position: sticky;
-    right: 24px;
+    top: 0;
+    max-height: calc(90vh - 28px); /* stay within the scroll container, never grow with main */
+    display: flex;
+    flex-direction: column;
 `
 
 

@@ -18,6 +18,7 @@ const RegisterPage = lazy(() => import('@pages/auth/RegisterPage'));
 const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
 const CourierDashboard = lazy(() => import('@pages/courier/CourierDashboard'));
 const CourierSettings = lazy(() => import('@pages/courier/CourierSettings'));
+const KdsScreen = lazy(() => import('@pages/kds/KdsScreen'));
 
 const AppShell = styled.div`
   position: relative;
@@ -73,6 +74,7 @@ export function App() {
       </Route>
 
       <Route path="/courier-app" element={<CourierApp />} />
+      <Route path="/kds" element={<KdsScreen />} />
 
       {isCourier ? (
         // Courier sees ONLY the courier UI — never the CRM. Anything else → dashboard.
