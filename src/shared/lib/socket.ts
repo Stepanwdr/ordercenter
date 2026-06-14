@@ -14,7 +14,7 @@ export const initializeSocket = () => {
   const store = useOrdersStore.getState();
 
   socket.on('connect', () => {
-    console.info('Socket connected:', socket?.id);
+    console.info('Socket cosnnected:', socket?.id);
   });
 
   socket.on('courier:update', (payload: { courierId: string; status: string; orderId?: string }) => {
