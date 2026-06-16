@@ -15,11 +15,15 @@ export async function printOrderTicket(payload, printerConfig) {
     const lib = await import('node-thermal-printer');
     const { ThermalPrinter, PrinterTypes, CharacterSet } = lib;
 
+    // CharacterSet values are CODE PAGES (PC437_USA, PC866_CYRILLIC, ...), not 'utf-8'.
+    // An unknown name resolves to undefined and makes iconv throw — only pass when valid.
+    const charset = printerConfig?.charset && CharacterSet[printerConfig.charset]
+      ? CharacterSet[printerConfig.charset]
+      : undefined;
     const printer = new ThermalPrinter({
       type: PrinterTypes.EPSON, // PP8800 speaks generic ESC/POS
       interface: `tcp://${ip}:${port}`,
-      // Armenian/Cyrillic glyph support varies by printer firmware; make it configurable.
-      characterSet: printerConfig?.charset ? CharacterSet[printerConfig.charset] : undefined,
+      ...(charset ? { characterSet: charset } : {}),
       removeSpecialCharacters: false,
       options: { timeout: Number(printerConfig?.timeout) || 3000 },
     });

@@ -34,13 +34,13 @@ if (existsSync(envPath)) {
 }
 
 const {
-  API_URL,
-  RESTAURANT_ID,
-  DEVICE_TOKEN,
-  PRINTER_IP,
+  API_URL='http://localhost:5000',
+  RESTAURANT_ID='a8afd356-873b-4c95-9635-d2cc579eda00',
+  DEVICE_TOKEN='dad',
+  PRINTER_IP='192.168.240.23',
   PRINTER_PORT = '9100',
   PRINTER_TYPE = 'epson',
-  PRINTER_CHARSET,
+  PRINTER_CHARSET='utf-8',
 } = process.env;
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -59,10 +59,13 @@ const money = (v) => Number(v ?? 0).toFixed(2);
 
 async function printOrder(p) {
   const { ThermalPrinter, PrinterTypes, CharacterSet } = await import('node-thermal-printer');
+  // node-thermal-printer's CharacterSet are CODE PAGES (PC437_USA, PC866_CYRILLIC, ...),
+  // NOT 'utf-8'. An unknown name → undefined → iconv throws. So only pass it when valid.
+  const charset = PRINTER_CHARSET && CharacterSet[PRINTER_CHARSET] ? CharacterSet[PRINTER_CHARSET] : undefined;
   const printer = new ThermalPrinter({
     type: PRINTER_TYPE === 'star' ? PrinterTypes.STAR : PrinterTypes.EPSON,
     interface: `tcp://${PRINTER_IP}:${PRINTER_PORT}`,
-    characterSet: PRINTER_CHARSET ? CharacterSet[PRINTER_CHARSET] : undefined,
+    ...(charset ? { characterSet: charset } : {}),
     removeSpecialCharacters: false,
     options: { timeout: 4000 },
   });
