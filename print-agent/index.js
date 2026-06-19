@@ -34,25 +34,28 @@ if (existsSync(envPath)) {
 }
 
 const {
-  API_URL='http://localhost:5000',
-  RESTAURANT_ID='a8afd356-873b-4c95-9635-d2cc579eda00',
-  DEVICE_TOKEN='dad',
+  API_URL='https://api.deliverydepartment.am',
+  RESTAURANT_ID='',
+  DEVICE_TOKEN='', // empty is fine: a restaurant with no channelConfig.deviceToken accepts any
   PRINTER_IP='192.168.240.23',
   PRINTER_PORT = '9100',
   PRINTER_TYPE = 'epson',
-  PRINTER_CHARSET='utf-8',
+  PRINTER_CHARSET='',
+  POLL_INTERVAL_MS = '4000',
 } = process.env;
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
-if (!API_URL || !RESTAURANT_ID || !DEVICE_TOKEN || !PRINTER_IP) {
-  console.error('Missing config. Required: API_URL, RESTAURANT_ID, DEVICE_TOKEN, PRINTER_IP');
+if (!API_URL || !RESTAURANT_ID || !PRINTER_IP) {
+  console.error('Missing config. Required: API_URL, RESTAURANT_ID, PRINTER_IP');
   process.exit(1);
 }
 
 const base = API_URL.replace(/\/$/, '');
-const streamUrl = `${base}/kitchen/restaurants/${RESTAURANT_ID}/stream?token=${encodeURIComponent(DEVICE_TOKEN)}`;
+const tokenQ = `token=${encodeURIComponent(DEVICE_TOKEN)}`;
+const pendingUrl = `${base}/kitchen/restaurants/${RESTAURANT_ID}/pending?${tokenQ}`;
 const ackUrl = `${base}/kitchen/restaurants/${RESTAURANT_ID}/ack`;
+const POLL_MS = Number(POLL_INTERVAL_MS) || 4000;
 
 // ── printing ──────────────────────────────────────────────────────
 const money = (v) => Number(v ?? 0).toFixed(2);
@@ -60,14 +63,16 @@ const money = (v) => Number(v ?? 0).toFixed(2);
 async function printOrder(p) {
   const { ThermalPrinter, PrinterTypes, CharacterSet } = await import('node-thermal-printer');
   // node-thermal-printer's CharacterSet are CODE PAGES (PC437_USA, PC866_CYRILLIC, ...),
-  // NOT 'utf-8'. An unknown name → undefined → iconv throws. So only pass it when valid.
-  const charset = PRINTER_CHARSET && CharacterSet[PRINTER_CHARSET] ? CharacterSet[PRINTER_CHARSET] : undefined;
+  // NOT 'utf-8'. An unknown/empty name → undefined → iconv throws "Encoding not recognized:
+  // 'undefined'". Always resolve to a VALID code page: env override if valid, else PC866
+  // (DOS Cyrillic — renders the Russian ticket text; safe ASCII fallback too).
+  const charset = (PRINTER_CHARSET && CharacterSet[PRINTER_CHARSET]) || CharacterSet.PC866_CYRILLIC;
   const printer = new ThermalPrinter({
     type: PRINTER_TYPE === 'star' ? PrinterTypes.STAR : PrinterTypes.EPSON,
     interface: `tcp://${PRINTER_IP}:${PRINTER_PORT}`,
-    ...(charset ? { characterSet: charset } : {}),
+    characterSet: charset,
     removeSpecialCharacters: false,
-    options: { timeout: 4000 },
+    options: { timeout: Number(process.env.PRINTER_TIMEOUT) || 8000 },
   });
 
   if (!(await printer.isPrinterConnected())) {
@@ -131,74 +136,53 @@ async function ack(orderId) {
   }
 }
 
-async function onOrder(payload) {
-  log(`order #${payload.code} received — printing`);
-  try {
-    await printOrder(payload);
-    log(`order #${payload.code} printed`);
-    await ack(payload.id); // confirm only after a successful print
-  } catch (e) {
-    // Don't ack: the order stays 'sent' and the server replays it on reconnect.
-    log(`print FAILED for #${payload.code}: ${e.message} (will retry on reconnect)`);
-  }
-}
+// Orders printed this session — guards against double-printing in the window between a
+// successful print and the ack landing on the server (the order is still in /pending
+// until then). Lost on restart, which is intentional: better to reprint an unacked order
+// than to miss one.
+const printed = new Set();
 
-// ── SSE client over fetch (no extra dependency) ───────────────────
-function dispatchFrame(frame) {
-  let event = 'message';
-  const dataLines = [];
-  for (const raw of frame.split('\n')) {
-    if (!raw || raw.startsWith(':')) continue; // heartbeat / comment
-    const i = raw.indexOf(':');
-    const field = i === -1 ? raw : raw.slice(0, i);
-    const value = i === -1 ? '' : raw.slice(i + 1).replace(/^ /, '');
-    if (field === 'event') event = value;
-    else if (field === 'data') dataLines.push(value);
-  }
-  if (!dataLines.length) return;
-  const data = dataLines.join('\n');
-  if (event === 'order:new') {
-    let payload;
-    try { payload = JSON.parse(data); } catch { return; }
-    onOrder(payload);
-  } else if (event === 'ready') {
-    log('stream ready');
-  }
-}
+// ── polling transport ─────────────────────────────────────────────
+// Why polling, not SSE: shared hosting (LiteSpeed/Passenger) cuts long-lived streaming
+// connections (UND_ERR_SOCKET), so the SSE stream is unreliable. A short GET every few
+// seconds passes through any proxy untouched.
+async function pollOnce() {
+  const res = await fetch(pendingUrl, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`pending HTTP ${res.status}`);
+  const body = await res.json();
+  const orders = Array.isArray(body?.data) ? body.data : [];
 
-async function streamOnce() {
-  const res = await fetch(streamUrl, { headers: { Accept: 'text/event-stream' } });
-  if (!res.ok || !res.body) throw new Error(`stream HTTP ${res.status}`);
-  log('connected to order stream');
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = '';
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) throw new Error('stream closed');
-    buf += decoder.decode(value, { stream: true });
-    let idx;
-    while ((idx = buf.indexOf('\n\n')) !== -1) {
-      dispatchFrame(buf.slice(0, idx));
-      buf = buf.slice(idx + 2);
+  for (const order of orders) {
+    if (printed.has(order.id)) {
+      // Printed already, but still in /pending → the earlier ack didn't land. Retry the
+      // ack only; never reprint.
+      await ack(order.id);
+      continue;
+    }
+    log(`order #${order.code} received — printing`);
+    try {
+      await printOrder(order);
+      printed.add(order.id);
+      log(`order #${order.code} printed`);
+      await ack(order.id); // confirm only after a successful print
+    } catch (e) {
+      // Don't ack: the order stays pending and is retried on the next poll.
+      log(`print FAILED for #${order.code}: ${e.message} (will retry next poll)`);
     }
   }
 }
 
 async function main() {
-  log(`print-agent starting · restaurant=${RESTAURANT_ID} · printer=${PRINTER_IP}:${PRINTER_PORT}`);
-  let attempt = 0;
+  log(`print-agent starting (poll ${POLL_MS}ms) · restaurant=${RESTAURANT_ID} · printer=${PRINTER_IP}:${PRINTER_PORT} · api=${base}`);
   for (;;) {
     try {
-      await streamOnce();
-      attempt = 0;
+      await pollOnce();
     } catch (e) {
-      const delay = Math.min(15000, 1000 * 2 ** attempt);
-      attempt += 1;
-      log(`stream error: ${e.message} — reconnecting in ${delay}ms`);
-      await new Promise((r) => setTimeout(r, delay));
+      // fetch() hides the real reason in error.cause (DNS / refused / TLS / socket).
+      const reason = e?.cause?.code || e?.cause?.message || e?.message;
+      log(`poll error: ${reason} (${base}) — retrying in ${POLL_MS}ms`);
     }
+    await new Promise((r) => setTimeout(r, POLL_MS));
   }
 }
 

@@ -101,6 +101,27 @@ const replayPending = async (restaurantId) => {
 };
 
 /**
+ * Return the orders still awaiting kitchen acknowledgement, serialized for the
+ * print-agent / KDS. This backs the POLLING transport — a short GET the agent calls
+ * every few seconds — which is reliable on shared hosting (LiteSpeed/Passenger) where
+ * long-lived SSE connections get cut (UND_ERR_SOCKET). Pure read: the agent removes an
+ * order from this set by POSTing /ack after a successful print.
+ * @param {string} restaurantId
+ * @returns {Promise<object[]>}
+ */
+const listPending = async (restaurantId) => {
+  const orders = await Order.findAll({
+    where: {
+      restaurantId,
+      dispatchStatus: { [Op.in]: ['pending', 'sent', 'failed'] },
+      status: { [Op.notIn]: ['done', 'completed', 'cancelled'] },
+    },
+    order: [['createdAt', 'ASC']],
+  });
+  return Promise.all(orders.map((o) => serializeOrderForKitchen(o.id)));
+};
+
+/**
  * Kitchen confirms receipt/printing of an order (POST back from the 'client' tablet).
  * @param {string} restaurantId
  * @param {string} orderId
@@ -139,4 +160,4 @@ const handleWebhook = async (channel, payload) => {
   return order;
 };
 
-export default { dispatch, replayPending, acknowledge, handleWebhook };
+export default { dispatch, replayPending, listPending, acknowledge, handleWebhook };

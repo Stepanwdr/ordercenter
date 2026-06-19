@@ -51,6 +51,22 @@ router.get(
   }),
 );
 
+// Polling transport: the print-agent GETs this every few seconds and prints anything
+// it hasn't acked yet. Reliable on shared hosting (LiteSpeed/Passenger) where the SSE
+// stream above gets cut. Same device-token auth as the stream.
+router.get(
+  '/restaurants/:id/pending',
+  asyncHandler(async (req, res) => {
+    const auth = await resolveDevice(req);
+    if (auth.error) {
+      res.status(auth.error).json({ success: false, message: auth.message });
+      return;
+    }
+    const orders = await kitchenDispatcher.listPending(req.params.id);
+    res.json({ success: true, data: orders });
+  }),
+);
+
 // Kitchen confirms receipt/printing of an order.
 router.post(
   '/restaurants/:id/ack',
