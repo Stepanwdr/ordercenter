@@ -22,6 +22,16 @@ Restaurant.init(
       type: DataTypes.STRING(1024),
       allowNull: true,
     },
+    // Brand logo (separate from the location photo).
+    logo: {
+      type: DataTypes.STRING(1024),
+      allowNull: true,
+    },
+    // The restaurant's own address — used when it has NO branches (single location).
+    address: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+    },
     ownerId: {
       type: DataTypes.UUID,
       allowNull: false,

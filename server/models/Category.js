@@ -13,12 +13,10 @@ Category.init(
     name: {
       type: DataTypes.STRING(128),
       allowNull: false,
-      unique: true,
     },
     slug: {
       type: DataTypes.STRING(128),
       allowNull: false,
-      unique: true,
     },
   },
   {
@@ -26,8 +24,8 @@ Category.init(
     modelName: 'Category',
     tableName: 'categories',
     indexes: [
-      { unique: true, fields: ['name'] },
-      { unique: true, fields: ['slug'] },
+      { unique: true, fields: ['name'], name: 'categories_name' },
+      { unique: true, fields: ['slug'], name: 'categories_slug' },
     ],
   }
 );

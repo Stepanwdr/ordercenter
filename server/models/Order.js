@@ -107,6 +107,12 @@ Order.init(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    // Which branch (RestaurantAddress / филиал) fulfills this order. Kitchen dispatch
+    // keys on this. Nullable for back-compat with orders created before branches existed.
+    branchId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
     payMethod: {
       type: DataTypes.ENUM(...OrderPaymentMethod),
       allowNull: true,

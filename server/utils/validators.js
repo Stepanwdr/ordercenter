@@ -20,6 +20,51 @@ const channelConfigSchema = z
   }, z.record(z.any()))
   .optional();
 
+// A kitchen printer: { name, ip, port }. Stored into channelConfig.printers (an array)
+// for a restaurant or a branch; the print-agent fetches it from the CRM.
+const printerSchema = z.object({
+  name: z.string().max(64).optional(),
+  ip: z.string().min(1).max(64),
+  port: z.coerce.number().int().min(1).max(65535).default(9100),
+});
+const printersSchema = z
+  .preprocess((v) => {
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch { return undefined; }
+    }
+    return v;
+  }, z.array(printerSchema))
+  .optional();
+
+// A branch (филиал) inside a restaurant's `addresses` array. Carries its own kitchen
+// channel/config so each branch can dispatch/print independently.
+const branchItemSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().max(255).optional(),
+  address: z.string().min(1).max(512).optional(),
+  phone: z.string().max(64).optional(),
+  photo: z.union([z.string().url(), z.string().max(0), z.null()]).optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  comment: z.string().max(512).optional(),
+  deliveryChannel: deliveryChannelSchema.optional(),
+  channelConfig: channelConfigSchema,
+  // The branch's printers [{name, ip, port}] — stored into channelConfig.printers so the
+  // branch's print-agent can fetch them (the CRM is the single source of truth).
+  printers: printersSchema,
+  isActive: z.coerce.boolean().optional(),
+});
+
+// Restaurant `addresses` field: an array of branches, or a JSON string (multipart forms).
+const branchesArraySchema = z
+  .preprocess((v) => {
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch { return []; }
+    }
+    return v;
+  }, z.array(branchItemSchema))
+  .optional();
+
 export const schemas = {
   register: z.object({
     email: z.string().email(),
@@ -41,30 +86,17 @@ export const schemas = {
       z.string().url(),
       z.null()
     ]).optional(),
+    logo: z.union([z.string().url(), z.string().max(0), z.null()]).optional(),
+    address: z.string().max(512).optional(),
     ownerId: z.string().uuid().optional(),
     lat: z.coerce.number().min(-90).max(90),
     lng: z.coerce.number().min(-180).max(180),
     phone: z.string().min(2).max(12).optional(),
     deliveryChannel: deliveryChannelSchema.optional(),
     channelConfig: channelConfigSchema,
-    addresses: z.preprocess(
-      (v) => {
-        if (typeof v === 'string') {
-          try {
-            return JSON.parse(v);
-          } catch {
-            return [];
-          }
-        }
-        return v;
-      },
-      z.array(
-        z.object({
-          address: z.string().min(1).max(128).optional(),
-          comment: z.string().optional(),
-        })
-      )
-    ).optional(),
+    // The restaurant's own printers (used when it has no branches).
+    printers: printersSchema,
+    addresses: branchesArraySchema,
   }),
   updateRestaurant: z.object({
     name: z.string().min(2).max(255).optional(),
@@ -72,34 +104,21 @@ export const schemas = {
       z.string().url(),
       z.null()
     ]).optional(),
+    logo: z.union([z.string().url(), z.string().max(0), z.null()]).optional(),
+    address: z.string().max(512).optional(),
     lat: z.coerce.number().min(-90).max(90).optional(),
     lng: z.coerce.number().min(-180).max(180).optional(),
     phone: z.string().min(2).max(12).optional(),
     deliveryChannel: deliveryChannelSchema.optional(),
+    printers: printersSchema,
     channelConfig: channelConfigSchema,
-    addresses: z.preprocess(
-      (v) => {
-        if (typeof v === 'string') {
-          try {
-            return JSON.parse(v);
-          } catch {
-            return [];
-          }
-        }
-        return v;
-      },
-      z.array(
-        z.object({
-          address: z.string().min(1).max(128).optional(),
-          comment: z.string().optional(),
-        })
-      )
-    ).optional(),
+    addresses: branchesArraySchema,
   }),
   createOrder: z.object({
     price: z.coerce.number().positive(),
     deliveryFee: z.coerce.number().min(0).optional(),
     restaurantId: z.string().uuid(),
+    branchId: z.string().uuid().optional(),
     courierId: z.string().uuid().optional(),
     customerPhone: z.string().min(1).max(32).optional(),
     deliveryAddress: z.string().min(1).max(512).optional(),

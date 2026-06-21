@@ -22,14 +22,12 @@ Users.init({
   email: {
     type: DataTypes.STRING(64),
     allowNull: false,
-    unique: 'users_email_unique'
   },
 
   // ── Google Auth ─────────────────────────────────────────────────────────────
   googleId: {
     type: DataTypes.STRING,
     allowNull: true,
-    unique: true,
   },
   avatar: {
     type: DataTypes.STRING,
@@ -66,6 +64,13 @@ Users.init({
   sequelize,
   modelName: 'users',
   tableName: 'users',
+  // Unique constraints live here (named) rather than as column-level `unique`,
+  // because column-level unique makes sync({ alter: true }) re-add the index on
+  // every run until MySQL hits its 64-key limit.
+  indexes: [
+    { unique: true, fields: ['email'], name: 'email' },
+    { unique: true, fields: ['google_id'], name: 'users_google_id' },
+  ],
 });
 
 

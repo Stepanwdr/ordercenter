@@ -74,23 +74,37 @@ const dispatch = async (orderOrId) => {
   return order;
 };
 
+// Build the WHERE for a kitchen queue. Scope is a branch (preferred) or a restaurant.
+// A restaurant-scoped queue returns ONLY branchless orders — so once a restaurant adopts
+// branches, its orders flow to the per-branch queues and the restaurant queue empties
+// (no double-print, and the legacy single-restaurant agent keeps working meanwhile).
+const pendingWhere = (scope) => {
+  const where = {
+    dispatchStatus: { [Op.in]: ['pending', 'sent', 'failed'] },
+    status: { [Op.notIn]: ['done', 'completed', 'cancelled'] },
+  };
+  if (scope?.branchId) where.branchId = scope.branchId;
+  else {
+    where.restaurantId = scope?.restaurantId;
+    where.branchId = null;
+  }
+  return where;
+};
+
+const scopeKey = (scope) => scope?.branchId || scope?.restaurantId;
+
 /**
- * Re-push every still-unconfirmed order of a restaurant onto its SSE stream.
- * Called when a 'client' tablet (re)connects, so an offline kitchen never loses orders.
- * @param {string} restaurantId
+ * Re-push every still-unconfirmed order of a scope (branch or restaurant) onto its SSE
+ * stream. Called when a 'client' tablet/agent (re)connects, so an offline kitchen never
+ * loses orders.
+ * @param {{restaurantId?: string, branchId?: string}} scope
  */
-const replayPending = async (restaurantId) => {
-  const orders = await Order.findAll({
-    where: {
-      restaurantId,
-      dispatchStatus: { [Op.in]: ['pending', 'sent', 'failed'] },
-      status: { [Op.notIn]: ['done', 'completed', 'cancelled'] },
-    },
-    order: [['createdAt', 'ASC']],
-  });
+const replayPending = async (scope) => {
+  const orders = await Order.findAll({ where: pendingWhere(scope), order: [['createdAt', 'ASC']] });
+  const key = scopeKey(scope);
   for (const order of orders) {
     const payload = await serializeOrderForKitchen(order.id);
-    pushToRestaurant(restaurantId, { event: 'order:new', id: order.id, data: payload });
+    pushToRestaurant(key, { event: 'order:new', id: order.id, data: payload });
     if (order.dispatchStatus !== 'sent') {
       order.dispatchStatus = 'sent';
       order.dispatchedAt = new Date();
@@ -101,38 +115,36 @@ const replayPending = async (restaurantId) => {
 };
 
 /**
- * Return the orders still awaiting kitchen acknowledgement, serialized for the
- * print-agent / KDS. This backs the POLLING transport — a short GET the agent calls
- * every few seconds — which is reliable on shared hosting (LiteSpeed/Passenger) where
- * long-lived SSE connections get cut (UND_ERR_SOCKET). Pure read: the agent removes an
- * order from this set by POSTing /ack after a successful print.
- * @param {string} restaurantId
+ * Orders still awaiting kitchen acknowledgement, serialized for the print-agent / KDS.
+ * Backs the POLLING transport — a short GET the agent calls every few seconds (reliable
+ * on shared hosting where long-lived SSE gets cut). Pure read: an order leaves this set
+ * when acked.
+ * @param {{restaurantId?: string, branchId?: string}} scope
  * @returns {Promise<object[]>}
  */
-const listPending = async (restaurantId) => {
-  const orders = await Order.findAll({
-    where: {
-      restaurantId,
-      dispatchStatus: { [Op.in]: ['pending', 'sent', 'failed'] },
-      status: { [Op.notIn]: ['done', 'completed', 'cancelled'] },
-    },
-    order: [['createdAt', 'ASC']],
-  });
+const listPending = async (scope) => {
+  const orders = await Order.findAll({ where: pendingWhere(scope), order: [['createdAt', 'ASC']] });
   return Promise.all(orders.map((o) => serializeOrderForKitchen(o.id)));
 };
 
 /**
- * Kitchen confirms receipt/printing of an order (POST back from the 'client' tablet).
- * @param {string} restaurantId
+ * Kitchen confirms receipt/printing of an order. The device token at the route already
+ * authorized the caller; here we match by id and (when scoped) verify ownership.
  * @param {string} orderId
  * @param {'accepted'|'failed'} [status]
+ * @param {{restaurantId?: string, branchId?: string}} [scope]
  */
-const acknowledge = async (restaurantId, orderId, status = 'accepted') => {
-  const order = await Order.findOne({ where: { id: orderId, restaurantId } });
-  if (!order) throw new AppError(404, 'Order not found for this restaurant');
+const acknowledge = async (orderId, status = 'accepted', scope = {}) => {
+  const order = await Order.findByPk(orderId);
+  if (!order) throw new AppError(404, 'Order not found');
+  if (scope.branchId) {
+    if (order.branchId && order.branchId !== scope.branchId) throw new AppError(404, 'Order not found for this branch');
+  } else if (scope.restaurantId && order.restaurantId !== scope.restaurantId) {
+    throw new AppError(404, 'Order not found for this restaurant');
+  }
   order.dispatchStatus = status === 'failed' ? 'failed' : 'accepted';
-  // Kitchen pressed "Принял" — advance the business status so the CRM/operator
-  // sees it, but never downgrade an order that's already further along.
+  // Kitchen pressed "Принял" — advance the business status so the CRM/operator sees it,
+  // but never downgrade an order that's already further along.
   if (status !== 'failed' && order.status === 'pending') {
     order.status = 'accepted';
   }

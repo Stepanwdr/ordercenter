@@ -14,7 +14,11 @@ export const clientAdapter = {
    * @returns {{ dispatchStatus: 'sent', externalId: null }}
    */
   async sendOrder(order, restaurant, payload) {
-    pushToRestaurant(restaurant.id, { event: 'order:new', id: order.id, data: payload });
+    // Route the live push to the branch's kitchen when the order has one, else the
+    // restaurant's (legacy single-kitchen). Polling agents don't rely on this, but a
+    // connected SSE client (KDS) does.
+    const streamKey = order.branchId || restaurant.id;
+    pushToRestaurant(streamKey, { event: 'order:new', id: order.id, data: payload });
 
     // Print the kitchen ticket directly to the thermal printer (RAW TCP:9100 —
     // over LAN if the backend is local, or over VPN if the backend is in the cloud).
@@ -37,10 +41,10 @@ export const clientAdapter = {
 
     // Whether or not a tablet is connected / the printer worked, the order is queued
     // (live push now, or replay on reconnect). 'accepted' comes from the ack.
-    return { dispatchStatus: 'sent', externalId: null, online: hasClients(restaurant.id) };
+    return { dispatchStatus: 'sent', externalId: null, online: hasClients(streamKey) };
   },
 
   async cancelOrder(order, restaurant) {
-    pushToRestaurant(restaurant.id, { event: 'order:cancel', id: order.id, data: { id: order.id } });
+    pushToRestaurant(order.branchId || restaurant.id, { event: 'order:cancel', id: order.id, data: { id: order.id } });
   },
 };

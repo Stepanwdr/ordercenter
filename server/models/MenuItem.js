@@ -21,7 +21,6 @@ MenuItem.init(
     article: {
       type: DataTypes.STRING(32),
       allowNull: false,
-      unique: true,
     },
     description: {
       type: DataTypes.STRING(512),
@@ -61,7 +60,7 @@ MenuItem.init(
     modelName: 'MenuItem',
     tableName: 'menu_items',
     indexes: [
-      { unique: true, fields: ['article'] },
+      { unique: true, fields: ['article'], name: 'article' },
       { fields: ['menu_id'] },
       { fields: ['category_id'] },
       { fields: ['quantity'] },

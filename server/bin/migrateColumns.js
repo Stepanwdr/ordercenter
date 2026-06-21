@@ -15,6 +15,8 @@ const COLUMNS = {
   restaurants: {
     delivery_channel: { type: DataTypes.ENUM('client', 'iiko', 'rkeeper'), allowNull: false, defaultValue: 'client' },
     channel_config: { type: DataTypes.JSON, allowNull: true },
+    logo: { type: DataTypes.STRING(1024), allowNull: true },
+    address: { type: DataTypes.STRING(512), allowNull: true },
   },
   orders: {
     delivery_fee: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
@@ -23,6 +25,19 @@ const COLUMNS = {
     dispatched_at: { type: DataTypes.DATE, allowNull: true },
     dispatch_attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     next_dispatch_at: { type: DataTypes.DATE, allowNull: true },
+    // Which branch (restaurant_addresses.id) fulfills the order.
+    branch_id: { type: DataTypes.UUID, allowNull: true },
+  },
+  // Branch (филиал) operational fields added on top of the simple address list.
+  restaurant_addresses: {
+    name: { type: DataTypes.STRING(255), allowNull: true },
+    phone: { type: DataTypes.STRING(64), allowNull: true },
+    photo: { type: DataTypes.STRING(1024), allowNull: true },
+    lat: { type: DataTypes.DECIMAL(10, 7), allowNull: true },
+    lng: { type: DataTypes.DECIMAL(10, 7), allowNull: true },
+    delivery_channel: { type: DataTypes.ENUM('client', 'iiko', 'rkeeper'), allowNull: false, defaultValue: 'client' },
+    channel_config: { type: DataTypes.JSON, allowNull: true },
+    is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   },
   users: {
     avatar: { type: DataTypes.STRING(512), allowNull: true },

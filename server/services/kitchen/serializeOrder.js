@@ -1,4 +1,4 @@
-import { Order, OrderItem, MenuItem, Restaurant } from '../../models/index.js';
+import { Order, OrderItem, MenuItem, Restaurant, RestaurantAddress } from '../../models/index.js';
 
 // Loads an order with the fields a kitchen needs and returns a channel-agnostic
 // payload. Adapters map this into their own POS format (or send as-is to 'client').
@@ -6,6 +6,7 @@ export async function serializeOrderForKitchen(orderId) {
   const order = await Order.findByPk(orderId, {
     include: [
       { model: Restaurant, as: 'restaurant' },
+      { model: RestaurantAddress, as: 'branch' },
       { model: OrderItem, as: 'orderItems', include: [{ model: MenuItem, as: 'menuItem' }] },
     ],
   });
@@ -19,6 +20,9 @@ export async function serializeOrderForKitchen(orderId) {
     createdAt: order.createdAt,
     prepTime: order.prepTime,
     restaurant: order.restaurant ? { id: order.restaurant.id, name: order.restaurant.name } : null,
+    branch: order.branch
+      ? { id: order.branch.id, name: order.branch.name, address: order.branch.address, phone: order.branch.phone }
+      : null,
     customer: {
       name: order.customerName,
       phone: order.customerPhone,

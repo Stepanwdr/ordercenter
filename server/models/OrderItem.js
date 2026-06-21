@@ -15,8 +15,10 @@ OrderItem.init(
       allowNull: false,
     },
     menuItemId: {
+      // Nullable so deleting a menu item leaves the historical order line intact
+      // (FK is ON DELETE SET NULL) instead of blocking the delete or orphaning the row.
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
     },
     quantity: {
       type: DataTypes.INTEGER,

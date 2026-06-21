@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Courier, Order, Restaurant, User, OrderItem, MenuItem, Menu, sequelize } from '../models/index.js';
+import { Courier, Order, Restaurant, RestaurantAddress, User, OrderItem, MenuItem, Menu, sequelize } from '../models/index.js';
 import telegramService from './telegramService.js';
 import AppError from '../utils/AppError.js';
 import { statusFieldMap } from '../utils/orderFlow.js';
@@ -27,6 +27,7 @@ const ORDER_INCLUDE = [
     as: 'restaurant',
     include: [{ model: Menu, as: 'menus', include: [{ model: MenuItem, as: 'items' }] }],
   },
+  { model: RestaurantAddress, as: 'branch' },
   {
     model: OrderItem,
     as: 'orderItems',
@@ -147,6 +148,14 @@ class OrderService {
         throw new AppError(404, 'Restaurant not found');
       }
 
+      // Resolve the branch (филиал) the order is fulfilled by; must belong to the restaurant.
+      if (payload.branchId) {
+        const branch = await RestaurantAddress.findByPk(payload.branchId, { transaction });
+        if (!branch || branch.restaurantId !== payload.restaurantId) {
+          throw new AppError(400, 'Selected branch does not belong to this restaurant');
+        }
+      }
+
       // Validate that all order items belong to the specified restaurant
       if (Array.isArray(payload.orderItems) && payload.orderItems.length) {
         for (const oi of payload.orderItems) {
@@ -179,6 +188,7 @@ class OrderService {
           deliveryFee,
           operatorId,
           restaurantId: payload.restaurantId,
+          branchId: payload.branchId ?? null,
           courierId: payload.courierId ?? null,
           customerPhone: payload.customerPhone ?? null,
           deliveryAddress: payload.deliveryAddress ?? null,

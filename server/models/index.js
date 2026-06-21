@@ -127,10 +127,12 @@ OrderItem.belongsTo(Order, {
 
 OrderItem.belongsTo(MenuItem, {
   as: 'menuItem',
-  foreignKey: 'menuItemId',
+  foreignKey: { name: 'menuItemId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
 });
 
-// RestaurantAddress associations
+// RestaurantAddress (= branch / филиал) associations
 Restaurant.hasMany(RestaurantAddress, {
   as: 'addresses',
   foreignKey: 'restaurantId',
@@ -139,6 +141,17 @@ Restaurant.hasMany(RestaurantAddress, {
 RestaurantAddress.belongsTo(Restaurant, {
   as: 'restaurant',
   foreignKey: 'restaurantId',
+});
+
+// An order is fulfilled by one branch; a branch has many orders.
+RestaurantAddress.hasMany(Order, {
+  as: 'orders',
+  foreignKey: 'branchId',
+});
+
+Order.belongsTo(RestaurantAddress, {
+  as: 'branch',
+  foreignKey: 'branchId',
 });
 
 // (duplicate courier associations removed to avoid conflicts)
