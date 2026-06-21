@@ -35,10 +35,13 @@ if (existsSync(envPath)) {
 
 const {
   API_URL='https://api.deliverydepartment.am',
+  // Scope this agent serves. Prefer BRANCH_ID (each branch = its own kitchen). If empty,
+  // falls back to RESTAURANT_ID (legacy single-kitchen restaurant).
+  BRANCH_ID='',
   RESTAURANT_ID='e81b0277-4e7f-45f1-907b-991ce60f3e12',
-  DEVICE_TOKEN='', // empty is fine: a restaurant with no channelConfig.deviceToken accepts any
+  DEVICE_TOKEN='', // empty is fine: a scope with no channelConfig.deviceToken accepts any
   PRINTER_IP='192.168.240.23',
-  PRINTER_IPS='192.168.123.100:9100,192.168.240.23:9100', // print the SAME ticket to BOTH (kitchen + 2nd). Comma-separated; overrides PRINTER_IP.
+  PRINTER_IPS='kitchen=192.168.123.100:9100,manager=192.168.240.23:9100', // SAME ticket to all; "label=ip:port" so logs show which printer. Overrides PRINTER_IP.
   PRINTER_PORT = '9100',
   PRINTER_TYPE = 'epson',
   PRINTER_CHARSET = 'PC866_CYRILLIC2',
@@ -48,29 +51,87 @@ const {
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 // Build the list of printer targets. Each gets the SAME full ticket (kitchen + bar both
-// print the whole order — no splitting). Configure either:
-//   PRINTER_IPS=192.168.240.23,192.168.240.30        (one or many, "ip" or "ip:port")
-// or the single PRINTER_IP (back-compat). Empty PRINTER_IPS → just PRINTER_IP.
+// print the whole order — no splitting). Each entry can be:
+//   "ip"                          (port defaults to PRINTER_PORT)
+//   "ip:port"
+//   "label=ip:port"               (label makes the config + logs self-documenting)
+// e.g. PRINTER_IPS=kitchen=192.168.123.100:9100,bar=192.168.240.23:9100
+// Empty PRINTER_IPS → falls back to the single PRINTER_IP.
 const DEFAULT_PORT = Number(PRINTER_PORT) || 9100;
-const PRINTERS = (PRINTER_IPS.trim() || PRINTER_IP)
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean)
-  .map((entry) => {
-    const [ip, port] = entry.split(':');
-    return { ip: ip.trim(), port: Number(port) || DEFAULT_PORT };
-  });
+function parsePrinters(str) {
+  return (str || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const eq = entry.indexOf('=');
+      const label = eq >= 0 ? entry.slice(0, eq).trim() : '';
+      const addr = (eq >= 0 ? entry.slice(eq + 1) : entry).trim();
+      const [ip, port] = addr.split(':');
+      const target = { ip: (ip || '').trim(), port: Number(port) || DEFAULT_PORT };
+      target.name = label || `${target.ip}:${target.port}`;
+      return target;
+    });
+}
 
-if (!API_URL || !RESTAURANT_ID || PRINTERS.length === 0) {
-  console.error('Missing config. Required: API_URL, RESTAURANT_ID, and PRINTER_IP (or PRINTER_IPS)');
+// Printer list. Starts from local env (PRINTER_IPS/PRINTER_IP); for a branch/restaurant
+// it's then overridden by the list configured in the CRM (single source of truth).
+let PRINTERS = parsePrinters(PRINTER_IPS.trim() || PRINTER_IP);
+
+// Normalize the CRM printers array [{ name, ip, port }] into print targets.
+function printersFromArray(arr) {
+  return (Array.isArray(arr) ? arr : [])
+    .filter((p) => p && p.ip)
+    .map((p) => {
+      const ip = String(p.ip).trim();
+      const port = Number(p.port) || DEFAULT_PORT;
+      return { ip, port, name: (p.name && String(p.name).trim()) || `${ip}:${port}` };
+    });
+}
+
+// Human label for logs: "name (ip:port)", or just "ip:port" when there's no custom name.
+const pdisp = (t) => (t.name === `${t.ip}:${t.port}` ? t.name : `${t.name} (${t.ip}:${t.port})`);
+
+// Scope path: a branch kitchen (preferred) or a whole restaurant (legacy).
+const SCOPE = BRANCH_ID.trim()
+  ? { kind: 'branches', id: BRANCH_ID.trim() }
+  : { kind: 'restaurants', id: RESTAURANT_ID.trim() };
+
+if (!API_URL || !SCOPE.id) {
+  console.error('Missing config. Required: API_URL and BRANCH_ID (or RESTAURANT_ID)');
+  process.exit(1);
+}
+// A branch may keep its printers in the CRM, so empty local printers is OK for a branch
+// (they're fetched on start). For a restaurant scope we need at least one local printer.
+if (PRINTERS.length === 0 && SCOPE.kind !== 'branches') {
+  console.error('Missing printers. Set PRINTER_IPS (or PRINTER_IP), or configure them on the branch in the CRM.');
   process.exit(1);
 }
 
 const base = API_URL.replace(/\/$/, '');
 const tokenQ = `token=${encodeURIComponent(DEVICE_TOKEN)}`;
-const pendingUrl = `${base}/kitchen/restaurants/${RESTAURANT_ID}/pending?${tokenQ}`;
-const ackUrl = `${base}/kitchen/restaurants/${RESTAURANT_ID}/ack`;
+const configUrl = `${base}/kitchen/${SCOPE.kind}/${SCOPE.id}/config?${tokenQ}`;
+const pendingUrl = `${base}/kitchen/${SCOPE.kind}/${SCOPE.id}/pending?${tokenQ}`;
+const ackUrl = `${base}/kitchen/${SCOPE.kind}/${SCOPE.id}/ack`;
 const POLL_MS = Number(POLL_INTERVAL_MS) || 4000;
+
+// Pull the printer list configured for this scope in the CRM (when present, it wins over
+// the local env list). Called on start and refreshed periodically.
+async function loadScopePrinters() {
+  try {
+    const res = await fetch(configUrl, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return;
+    const body = await res.json();
+    const next = printersFromArray(body?.data?.printers);
+    if (next.length) {
+      PRINTERS = next;
+      log(`printers from CRM: [${PRINTERS.map(pdisp).join(', ')}]`);
+    }
+  } catch (e) {
+    const reason = e?.cause?.code || e?.cause?.message || e?.message;
+    log(`could not load CRM printers (${reason}) — using local config`);
+  }
+}
 
 // ── printing ──────────────────────────────────────────────────────
 const money = (v) => Number(v ?? 0).toFixed(2);
@@ -93,7 +154,7 @@ async function printOrder(p, target) {
   });
 
   if (!(await printer.isPrinterConnected())) {
-    throw new Error(`printer unreachable at ${target.ip}:${target.port}`);
+    throw new Error(`printer ${pdisp(target)} unreachable`);
   }
 
   printer.alignCenter();
@@ -165,6 +226,12 @@ const tkey = (orderId, t) => `${orderId}@${t.ip}:${t.port}`;
 // connections (UND_ERR_SOCKET), so the SSE stream is unreliable. A short GET every few
 // seconds passes through any proxy untouched.
 async function pollOnce() {
+  // No printers yet (env empty + none from CRM): do NOT fetch/ack, or we'd silently ack
+  // orders without printing them. Wait for the periodic CRM refresh to provide printers.
+  if (PRINTERS.length === 0) {
+    log('no printers configured yet — set them on the branch in the CRM (or PRINTER_IPS)');
+    return;
+  }
   const res = await fetch(pendingUrl, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`pending HTTP ${res.status}`);
   const body = await res.json();
@@ -202,10 +269,15 @@ async function pollOnce() {
 }
 
 async function main() {
-  const printerList = PRINTERS.map((t) => `${t.ip}:${t.port}`).join(', ');
-  log(`print-agent starting (poll ${POLL_MS}ms) · restaurant=${RESTAURANT_ID} · printers=[${printerList}] · api=${base}`);
+  await loadScopePrinters(); // pull CRM-configured printers before the first poll
+  const printerList = PRINTERS.map(pdisp).join(', ') || '(none yet — waiting for CRM)';
+  log(`print-agent starting (poll ${POLL_MS}ms) · ${SCOPE.kind}=${SCOPE.id} · printers=[${printerList}] · api=${base}`);
+  let ticks = 0;
   for (;;) {
     try {
+      // Refresh the printer list from the CRM roughly every 60s so admin changes apply
+      // without restarting the agent.
+      if (++ticks % Math.max(1, Math.round(60000 / POLL_MS)) === 0) await loadScopePrinters();
       await pollOnce();
     } catch (e) {
       // fetch() hides the real reason in error.cause (DNS / refused / TLS / socket).

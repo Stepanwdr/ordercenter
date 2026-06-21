@@ -35,6 +35,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   });
 
   const [restaurantId, setRestaurantId] = useState('');
+  const [branchId, setBranchId] = useState('');
   const [courierId, setCourierId] = useState('');
   const menus = useMenusQuery(restaurantId || null).data ?? [];
   const menuId = menus.length && menus[0].id;
@@ -51,6 +52,11 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   const [drafts, setDrafts] = useState<OrderDraft[]>(() => getDrafts());
 
   const restaurantOptions = restaurants.map((r) => ({ value: r.id, label: r.name }));
+
+  // Branches (филиалы) of the selected restaurant. The order is fulfilled by one branch.
+  const selectedRestaurant = restaurants.find((r) => r.id === restaurantId);
+  const branches = (selectedRestaurant?.addresses ?? []).filter((b: any) => b.isActive !== false && b.id);
+  const branchOptions = branches.map((b: any) => ({ value: b.id, label: b.name || b.address || 'Մասնաճյուղ' }));
 
 
   const filteredItems = useMemo(() => {
@@ -89,6 +95,10 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
       alert('Ընտրեք ռեստորան');
       return;
     }
+    if (branchOptions.length > 0 && !branchId) {
+      alert('Ընտրեք մասնաճյուղ');
+      return;
+    }
     if (cart.length === 0) {
       alert('Ընտրեք առնվազն մեկ ապրանք');
       return;
@@ -104,6 +114,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
       deliveryAddress,
       orderItems,
     };
+    if (branchId) payload.branchId = branchId;
     if (courierId) payload.courierId = courierId;
     await mutate.mutateAsync(payload);
     if (draftId) {
@@ -177,7 +188,10 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
           </DraftsPanel>
         )}
         <Dropdowns>
-          <Dropdown label={'Ռետտորան'} value={restaurantId} options={restaurantOptions} placeholder="Ընտրել ռեստորան" onChange={(val) => { setRestaurantId(val) }} />
+          <Dropdown label={'Ռետտորան'} value={restaurantId} options={restaurantOptions} placeholder="Ընտրել ռեստորան" onChange={(val) => { setRestaurantId(val); setBranchId(''); }} />
+          {branchOptions.length > 0 && (
+            <Dropdown label={'Մասնաճյուղ'} value={branchId} options={branchOptions} placeholder="Ընտրել մասնաճյուղ" onChange={(val) => { setBranchId(val) }} />
+          )}
         </Dropdowns>
         <SearchPanel>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Որոնել ապրանք..." />

@@ -40,6 +40,8 @@ export interface Order {
   orderCode: string;
   phone: string;
   restaurant: Restaurant;
+  branchId?: string | null;
+  branch?: { id: string; name?: string | null; address?: string | null; phone?: string | null } | null;
   courierProfile: Courier;
   courierPhone: string;
   operatorName: string;

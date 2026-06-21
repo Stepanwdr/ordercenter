@@ -979,13 +979,14 @@ export default function CourierDashboard() {
                 <InfoIcon>🏪</InfoIcon>
                 <InfoText>
                   {order.restaurant.name}
-                  {order.restaurant.addresses?.[0]?.address && (
-                    <InfoSub>{order.restaurant.addresses[0].address}</InfoSub>
+                  {order.branch?.name && <InfoSub>🏬 {order.branch.name}</InfoSub>}
+                  {(order.branch?.address || order.restaurant.addresses?.[0]?.address) && (
+                    <InfoSub>{order.branch?.address || order.restaurant.addresses?.[0]?.address}</InfoSub>
                   )}
-                  {order.restaurant.phone && (
+                  {(order.branch?.phone || order.restaurant.phone) && (
                     <InfoSub>
-                      <PhoneLink href={`tel:${order.restaurant.phone}`}>
-                        📞 {order.restaurant.phone}
+                      <PhoneLink href={`tel:${order.branch?.phone || order.restaurant.phone}`}>
+                        📞 {order.branch?.phone || order.restaurant.phone}
                       </PhoneLink>
                     </InfoSub>
                   )}

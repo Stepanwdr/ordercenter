@@ -27,9 +27,10 @@ Fill `.env`:
 - `RESTAURANT_ID` — the restaurant's id
 - `DEVICE_TOKEN` — `restaurant.channelConfig.deviceToken`
 - `PRINTER_IP` / `PRINTER_PORT` — the printer's LAN address (port 9100)
-- `PRINTER_IPS` — optional, several printers: `192.168.240.23,192.168.240.30` (`ip` or
-  `ip:port`). The **same full ticket** prints on **all** of them (e.g. kitchen + bar).
-  If set, overrides `PRINTER_IP`.
+- `PRINTER_IPS` — optional, several printers, comma-separated. Each entry is `ip`,
+  `ip:port`, or `label=ip:port` (e.g. `kitchen=192.168.123.100:9100,bar=192.168.240.23:9100`).
+  The label is shown in the logs so you can tell which printer is which. The **same full
+  ticket** prints on **all** of them. If set, overrides `PRINTER_IP`.
 - `PRINTER_TYPE` — `epson` (default) or `star`
 - `PRINTER_CHARSET` — optional (e.g. `PC866_CYRILLIC2`)
 

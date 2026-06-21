@@ -408,6 +408,9 @@ const OrdersPage = () => {
           return row?.restaurant?.name;
         },
       },
+      { key: 'branch', name: 'Մասնաճյուղ', resizable: true, draggable: true,
+        renderCell: ({ row }: { row: Order }) => row?.branch?.name || row?.branch?.address || '—',
+      },
       { key: 'courierRestaurantAt',  sortable: true, name: 'Առաքիչը հասել է ռեստորան', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierRestaurantAt) },
       { key: 'courierDeliveredAt',   sortable: true,name: 'Առաքիչը առաքումը ավարտել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierDeliveredAt) },
       { key: 'courierPickedUpAt',   sortable: true,name: 'Առաքիչը պատվերը վերցրել է', resizable: true, draggable: true,renderCell:({row})=>formatTime(row.courierPickedUpAt) },
@@ -427,7 +430,7 @@ const OrdersPage = () => {
             <ItemChips>
               {items.map((item) => (
                 <ItemChip key={item?.id}>
-                  {item?.quantity}h - {item?.menuItem.name}
+                  {item?.quantity}h - {item?.menuItem?.name}
                 </ItemChip>
               ))}
             </ItemChips>
