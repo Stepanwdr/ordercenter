@@ -38,16 +38,31 @@ const {
   RESTAURANT_ID='e81b0277-4e7f-45f1-907b-991ce60f3e12',
   DEVICE_TOKEN='', // empty is fine: a restaurant with no channelConfig.deviceToken accepts any
   PRINTER_IP='192.168.240.23',
+  PRINTER_IPS='', // optional: several printers, comma-separated. Same ticket goes to ALL.
   PRINTER_PORT = '9100',
   PRINTER_TYPE = 'epson',
-  PRINTER_CHARSET='',
+  PRINTER_CHARSET = 'PC866_CYRILLIC2',
   POLL_INTERVAL_MS = '4000',
 } = process.env;
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
-if (!API_URL || !RESTAURANT_ID || !PRINTER_IP) {
-  console.error('Missing config. Required: API_URL, RESTAURANT_ID, PRINTER_IP');
+// Build the list of printer targets. Each gets the SAME full ticket (kitchen + bar both
+// print the whole order — no splitting). Configure either:
+//   PRINTER_IPS=192.168.240.23,192.168.240.30        (one or many, "ip" or "ip:port")
+// or the single PRINTER_IP (back-compat). Empty PRINTER_IPS → just PRINTER_IP.
+const DEFAULT_PORT = Number(PRINTER_PORT) || 9100;
+const PRINTERS = (PRINTER_IPS.trim() || PRINTER_IP)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map((entry) => {
+    const [ip, port] = entry.split(':');
+    return { ip: ip.trim(), port: Number(port) || DEFAULT_PORT };
+  });
+
+if (!API_URL || !RESTAURANT_ID || PRINTERS.length === 0) {
+  console.error('Missing config. Required: API_URL, RESTAURANT_ID, and PRINTER_IP (or PRINTER_IPS)');
   process.exit(1);
 }
 
@@ -60,7 +75,8 @@ const POLL_MS = Number(POLL_INTERVAL_MS) || 4000;
 // ── printing ──────────────────────────────────────────────────────
 const money = (v) => Number(v ?? 0).toFixed(2);
 
-async function printOrder(p) {
+// Print the full ticket to ONE printer target ({ ip, port }).
+async function printOrder(p, target) {
   const { ThermalPrinter, PrinterTypes, CharacterSet } = await import('node-thermal-printer');
   // node-thermal-printer's CharacterSet are CODE PAGES (PC437_USA, PC866_CYRILLIC2, ...),
   // NOT 'utf-8'. An unknown/empty name → undefined → iconv throws "Encoding not recognized:
@@ -70,14 +86,14 @@ async function printOrder(p) {
   const charset = (PRINTER_CHARSET && CharacterSet[PRINTER_CHARSET]) || CharacterSet.PC866_CYRILLIC2;
   const printer = new ThermalPrinter({
     type: PRINTER_TYPE === 'star' ? PrinterTypes.STAR : PrinterTypes.EPSON,
-    interface: `tcp://${PRINTER_IP}:${PRINTER_PORT}`,
+    interface: `tcp://${target.ip}:${target.port}`,
     characterSet: charset,
     removeSpecialCharacters: false,
     options: { timeout: Number(process.env.PRINTER_TIMEOUT) || 8000 },
   });
 
   if (!(await printer.isPrinterConnected())) {
-    throw new Error(`printer unreachable at ${PRINTER_IP}:${PRINTER_PORT}`);
+    throw new Error(`printer unreachable at ${target.ip}:${target.port}`);
   }
 
   printer.alignCenter();
@@ -137,11 +153,12 @@ async function ack(orderId) {
   }
 }
 
-// Orders printed this session — guards against double-printing in the window between a
-// successful print and the ack landing on the server (the order is still in /pending
-// until then). Lost on restart, which is intentional: better to reprint an unacked order
-// than to miss one.
+// (order,printer) pairs printed this session — guards against double-printing in the
+// window before the ack lands, AND lets a retry hit only the printers that failed (so a
+// dead bar printer never reprints the kitchen ticket). Lost on restart, intentionally:
+// better to reprint an unacked order than to miss one.
 const printed = new Set();
+const tkey = (orderId, t) => `${orderId}@${t.ip}:${t.port}`;
 
 // ── polling transport ─────────────────────────────────────────────
 // Why polling, not SSE: shared hosting (LiteSpeed/Passenger) cuts long-lived streaming
@@ -154,27 +171,39 @@ async function pollOnce() {
   const orders = Array.isArray(body?.data) ? body.data : [];
 
   for (const order of orders) {
-    if (printed.has(order.id)) {
-      // Printed already, but still in /pending → the earlier ack didn't land. Retry the
-      // ack only; never reprint.
+    // Only print to the printers that haven't got this order yet.
+    const targets = PRINTERS.filter((t) => !printed.has(tkey(order.id, t)));
+    if (targets.length === 0) {
+      // Every printer already has it, but it's still in /pending → ack didn't land. Retry ack.
       await ack(order.id);
       continue;
     }
-    log(`order #${order.code} received — printing`);
-    try {
-      await printOrder(order);
-      printed.add(order.id);
+
+    log(`order #${order.code} received — printing on ${targets.length} printer(s)`);
+    // Same full ticket to every target, in parallel.
+    const results = await Promise.allSettled(
+      targets.map(async (t) => {
+        await printOrder(order, t);
+        printed.add(tkey(order.id, t));
+      }),
+    );
+
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length === 0) {
       log(`order #${order.code} printed`);
-      await ack(order.id); // confirm only after a successful print
-    } catch (e) {
-      // Don't ack: the order stays pending and is retried on the next poll.
-      log(`print FAILED for #${order.code}: ${e.message} (will retry next poll)`);
+      await ack(order.id); // confirm only after ALL printers succeeded
+    } else {
+      // Some printer failed → don't ack; the order stays pending and the failed printers
+      // are retried next poll (the ones that succeeded are skipped via `printed`).
+      const why = failed.map((f) => f.reason?.message || f.reason).join('; ');
+      log(`print FAILED for #${order.code} on ${failed.length}/${targets.length}: ${why} (will retry next poll)`);
     }
   }
 }
 
 async function main() {
-  log(`print-agent starting (poll ${POLL_MS}ms) · restaurant=${RESTAURANT_ID} · printer=${PRINTER_IP}:${PRINTER_PORT} · api=${base}`);
+  const printerList = PRINTERS.map((t) => `${t.ip}:${t.port}`).join(', ');
+  log(`print-agent starting (poll ${POLL_MS}ms) · restaurant=${RESTAURANT_ID} · printers=[${printerList}] · api=${base}`);
   for (;;) {
     try {
       await pollOnce();

@@ -27,15 +27,20 @@ Fill `.env`:
 - `RESTAURANT_ID` — the restaurant's id
 - `DEVICE_TOKEN` — `restaurant.channelConfig.deviceToken`
 - `PRINTER_IP` / `PRINTER_PORT` — the printer's LAN address (port 9100)
+- `PRINTER_IPS` — optional, several printers: `192.168.240.23,192.168.240.30` (`ip` or
+  `ip:port`). The **same full ticket** prints on **all** of them (e.g. kitchen + bar).
+  If set, overrides `PRINTER_IP`.
 - `PRINTER_TYPE` — `epson` (default) or `star`
 - `PRINTER_CHARSET` — optional (e.g. `PC866_CYRILLIC2`)
 
 ## Behaviour
 - **Polls** `GET {API_URL}/kitchen/restaurants/{id}/pending?token=...` every
   `POLL_INTERVAL_MS` (default 4000ms) and prints anything not yet acked.
-- On a new order → prints the ticket → `POST .../ack` (only after a **successful** print).
-- If the printer is unreachable, it does **not** ack — the order stays pending and is
-  retried on the next poll, so nothing is lost.
+- On a new order → prints the **same** ticket to **every** configured printer (in
+  parallel) → `POST .../ack` (only after **all** printers succeed).
+- If a printer is unreachable, it does **not** ack — the order stays pending and is
+  retried on the next poll. Printers that already printed are skipped, so a dead bar
+  printer never reprints the kitchen ticket.
 - A dropped/refused request just retries next tick — no long-lived connection to break.
 
 > **Why polling, not SSE?** Shared hosting (LiteSpeed/Passenger on cPanel) cuts long-lived
