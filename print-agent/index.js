@@ -38,7 +38,7 @@ const {
   RESTAURANT_ID='e81b0277-4e7f-45f1-907b-991ce60f3e12',
   DEVICE_TOKEN='', // empty is fine: a restaurant with no channelConfig.deviceToken accepts any
   PRINTER_IP='192.168.240.23',
-  PRINTER_IPS='', // optional: several printers, comma-separated. Same ticket goes to ALL.
+  PRINTER_IPS='192.168.123.100:9100,192.168.240.23:9100', // print the SAME ticket to BOTH (kitchen + 2nd). Comma-separated; overrides PRINTER_IP.
   PRINTER_PORT = '9100',
   PRINTER_TYPE = 'epson',
   PRINTER_CHARSET = 'PC866_CYRILLIC2',
