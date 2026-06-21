@@ -35,7 +35,7 @@ if (existsSync(envPath)) {
 
 const {
   API_URL='https://api.deliverydepartment.am',
-  RESTAURANT_ID='',
+  RESTAURANT_ID='e81b0277-4e7f-45f1-907b-991ce60f3e12',
   DEVICE_TOKEN='', // empty is fine: a restaurant with no channelConfig.deviceToken accepts any
   PRINTER_IP='192.168.240.23',
   PRINTER_PORT = '9100',
@@ -62,11 +62,12 @@ const money = (v) => Number(v ?? 0).toFixed(2);
 
 async function printOrder(p) {
   const { ThermalPrinter, PrinterTypes, CharacterSet } = await import('node-thermal-printer');
-  // node-thermal-printer's CharacterSet are CODE PAGES (PC437_USA, PC866_CYRILLIC, ...),
+  // node-thermal-printer's CharacterSet are CODE PAGES (PC437_USA, PC866_CYRILLIC2, ...),
   // NOT 'utf-8'. An unknown/empty name → undefined → iconv throws "Encoding not recognized:
-  // 'undefined'". Always resolve to a VALID code page: env override if valid, else PC866
-  // (DOS Cyrillic — renders the Russian ticket text; safe ASCII fallback too).
-  const charset = (PRINTER_CHARSET && CharacterSet[PRINTER_CHARSET]) || CharacterSet.PC866_CYRILLIC;
+  // 'undefined'". Always resolve to a VALID code page: env override if valid, else
+  // PC866_CYRILLIC2 (CP866 — renders the Russian ticket text). NOTE the trailing "2":
+  // this library has no "PC866_CYRILLIC" key, only "PC866_CYRILLIC2".
+  const charset = (PRINTER_CHARSET && CharacterSet[PRINTER_CHARSET]) || CharacterSet.PC866_CYRILLIC2;
   const printer = new ThermalPrinter({
     type: PRINTER_TYPE === 'star' ? PrinterTypes.STAR : PrinterTypes.EPSON,
     interface: `tcp://${PRINTER_IP}:${PRINTER_PORT}`,
@@ -127,7 +128,7 @@ async function ack(orderId) {
   try {
     const res = await fetch(ackUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-device-token': DEVICE_TOKEN },
+      headers: { 'Content-Type': 'application/json', },
       body: JSON.stringify({ orderId, status: 'accepted' }),
     });
     if (!res.ok) log('ack failed', res.status);

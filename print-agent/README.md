@@ -28,7 +28,7 @@ Fill `.env`:
 - `DEVICE_TOKEN` — `restaurant.channelConfig.deviceToken`
 - `PRINTER_IP` / `PRINTER_PORT` — the printer's LAN address (port 9100)
 - `PRINTER_TYPE` — `epson` (default) or `star`
-- `PRINTER_CHARSET` — optional (e.g. `PC866_CYRILLIC`)
+- `PRINTER_CHARSET` — optional (e.g. `PC866_CYRILLIC2`)
 
 ## Behaviour
 - **Polls** `GET {API_URL}/kitchen/restaurants/{id}/pending?token=...` every

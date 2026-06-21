@@ -15,7 +15,7 @@ export async function printOrderTicket(payload, printerConfig) {
     const lib = await import('node-thermal-printer');
     const { ThermalPrinter, PrinterTypes, CharacterSet } = lib;
 
-    // CharacterSet values are CODE PAGES (PC437_USA, PC866_CYRILLIC, ...), not 'utf-8'.
+    // CharacterSet values are CODE PAGES (PC437_USA, PC866_CYRILLIC2, ...), not 'utf-8'.
     // An unknown name resolves to undefined and makes iconv throw — only pass when valid.
     const charset = printerConfig?.charset && CharacterSet[printerConfig.charset]
       ? CharacterSet[printerConfig.charset]
