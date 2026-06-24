@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createCategoryRequest,
+  deleteCategoryRequest,
+  updateCategoryRequest,
   createMenuItemRequest,
   createMenuRequest,
+  deleteMenuItemRequest,
   deleteMenuRequest,
   getCategoriesRequest,
   getMenuItemsRequest,
@@ -60,11 +64,48 @@ export const useDeleteMenuMutation = (restaurantId: string) => {
   });
 };
 
-export const useCategoriesQuery = () =>
+export const useCategoriesQuery = (menuId?: string | null) =>
   useQuery<Category[]>({
-    queryKey: ['categories'],
-    queryFn: async () => getCategoriesRequest(),
+    queryKey: ['categories', menuId ?? null],
+    queryFn: async () => getCategoriesRequest(menuId),
   });
+
+export const useCreateCategoryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['categories', 'create'],
+    mutationFn: async (payload: { menuId: string; name: string; slug?: string }) => createCategoryRequest(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+};
+
+export const useUpdateCategoryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['categories', 'update'],
+    mutationFn: async ({ id, payload }: { id: string; payload: { name?: string; slug?: string } }) =>
+      updateCategoryRequest(id, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+};
+
+export const useDeleteCategoryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['categories', 'delete'],
+    mutationFn: async (id: string) => deleteCategoryRequest(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+};
 
 export const useMenuItemsQuery = (menuId: string | null, search = '') =>
   useQuery<MenuItem[]>({
@@ -82,6 +123,18 @@ export const useCreateMenuItemMutation = (menuId: string) => {
   return useMutation({
     mutationKey: ['menu-items', 'create', menuId],
     mutationFn: async (payload: CreateMenuItemPayload) => createMenuItemRequest(menuId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['menu-items', menuId] });
+    },
+  });
+};
+
+export const useDeleteMenuItemMutation = (menuId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['menu-items', 'delete', menuId],
+    mutationFn: async (itemId: string) => deleteMenuItemRequest(menuId, itemId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['menu-items', menuId] });
     },

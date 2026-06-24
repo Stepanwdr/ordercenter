@@ -56,6 +56,11 @@ class MenuItemService {
 
     if (!menu) throw new AppError(404, 'Menu not found');
     if (!category) throw new AppError(404, 'Category not found');
+    // Enforce the hierarchy restaurant → menu → category → product: the chosen category
+    // must belong to this menu (legacy categories with no menuId are allowed through).
+    if (category.menuId && category.menuId !== menuId) {
+      throw new AppError(400, 'Category does not belong to this menu');
+    }
     const article = await createUniqueArticle();
 
     const item = await MenuItem.create({
@@ -71,6 +76,13 @@ class MenuItemService {
       volumeName: payload.volumeName ?? null,
     });
     return item;
+  }
+
+  static async remove(menuId, itemId) {
+    const item = await MenuItem.findOne({ where: { id: itemId, menuId } });
+    if (!item) throw new AppError(404, 'Menu item not found');
+    await item.destroy(); // order_items.menu_item_id is SET NULL, so past orders are kept
+    return { id: itemId };
   }
 }
 

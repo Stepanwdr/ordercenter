@@ -8,5 +8,6 @@ const router = express.Router({ mergeParams: true });
 
 router.get('/:menuId/items', asyncHandler(MenuItemsController.list));
 router.post('/:menuId/items', validate(schemas.createMenuItem), asyncHandler(MenuItemsController.create));
+router.delete('/:menuId/items/:itemId', asyncHandler(MenuItemsController.remove));
 
 export default router;

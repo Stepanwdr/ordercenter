@@ -46,13 +46,15 @@ export const Modal = ({
   title,
   children,
   onClose,
+  width = 'min(1100px, 100%)',
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  width?: string;
 }) => (
   <Backdrop onClick={onClose}>
-    <Panel onClick={(event) => event.stopPropagation()}>
+    <Panel style={{ width }} onClick={(event) => event.stopPropagation()}>
       <Header>
         <Title>{title}</Title>
         <Button variant="ghost" onClick={onClose}>Փակել</Button>

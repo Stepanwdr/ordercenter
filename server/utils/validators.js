@@ -185,7 +185,12 @@ export const schemas = {
     volumeName: z.string().min(1).max(32).optional(),
   }),
   createCategory: z.object({
+    menuId: z.string().uuid(),
     name: z.string().min(2).max(128),
+    slug: z.string().min(2).max(128).optional(),
+  }),
+  updateCategory: z.object({
+    name: z.string().min(2).max(128).optional(),
     slug: z.string().min(2).max(128).optional(),
   }),
   createCourier: z.object({

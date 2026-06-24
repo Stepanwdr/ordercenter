@@ -4,11 +4,16 @@ import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
 import { ImageUploader } from '@shared/ui/ImageUploader';
+import { Modal } from '@shared/ux/Modal';
 import { useRestaurantsQuery } from '@app/hooks/dataApi';
 import {
   useCategoriesQuery,
+  useCreateCategoryMutation,
+  useUpdateCategoryMutation,
+  useDeleteCategoryMutation,
   useCreateMenuItemMutation,
   useCreateMenuMutation,
+  useDeleteMenuItemMutation,
   useDeleteMenuMutation,
   useMenuItemsQuery,
   useMenusQuery,
@@ -143,6 +148,31 @@ const FooterBar = styled.div`
   gap: 8px;
 `;
 
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const CatOption = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+`;
+const CatActions = styled.span`
+  display: inline-flex;
+  gap: 8px;
+  opacity: 0.85;
+`;
+const CatIcon = styled.span`
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  &:hover { background: rgba(255, 255, 255, 0.12); }
+`;
+
 const InputWrapper = styled.div`
 display: flex;
 gap: 8px;
@@ -161,23 +191,93 @@ const MenuManagementPage = () => {
   const restaurantOptions = useMemo(() => toRestaurantOptions(restaurants), [restaurants]);
 
   const [restaurantId, setRestaurantId] = useState('');
+  const [menuId, setMenuId] = useState('');
   const menusQuery = useMenusQuery(restaurantId || null);
-  const categoriesQuery = useCategoriesQuery();
+  const categoriesQuery = useCategoriesQuery(menuId || null);
 
   const menus = menusQuery.data ?? [];
   const menuOptions = menus.map((menu) => ({ value: menu.id, label: menu.name }));
   const categories = categoriesQuery.data ?? [];
-  const categoryOptions = categories.map((category) => ({ value: category.id, label: category.name }));
+  const categoryOptions = categories.map((category) => ({
+    value: category.id,
+    label: category.name,
+    menuLabel: (
+      <CatOption>
+        <span>{category.name}</span>
+        <CatActions>
+          <CatIcon
+            title="Փոխել անունը"
+            onClick={(e) => { e.stopPropagation(); openEditCategory({ id: category.id, name: category.name }); }}
+          >
+            ✏️
+          </CatIcon>
+          <CatIcon
+            title="Ջնջել"
+            onClick={(e) => { e.stopPropagation(); setCategoryToDelete({ id: category.id, name: category.name }); }}
+          >
+            🗑
+          </CatIcon>
+        </CatActions>
+      </CatOption>
+    ),
+  }));
 
   const [newMenuName, setNewMenuName] = useState('');
   const createMenu = useCreateMenuMutation(restaurantId);
   const updateMenu = useUpdateMenuMutation(restaurantId);
   const deleteMenu = useDeleteMenuMutation(restaurantId);
 
-  const [menuId, setMenuId] = useState('');
   const menuItemsQuery = useMenuItemsQuery(menuId || null);
   const menuItems = menuItemsQuery.data ?? [];
   const createMenuItem = useCreateMenuItemMutation(menuId);
+  const deleteMenuItem = useDeleteMenuItemMutation(menuId);
+  const createCategory = useCreateCategoryMutation();
+  const updateCategory = useUpdateCategoryMutation();
+  const deleteCategory = useDeleteCategoryMutation();
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  const openAddCategory = () => {
+    if (!menuId) {
+      window.alert('Ընտրեք մենյուն');
+      return;
+    }
+    setEditingCategoryId(null);
+    setNewCategoryName('');
+    setCategoryModalOpen(true);
+  };
+
+  const openEditCategory = (cat: { id: string; name: string }) => {
+    setEditingCategoryId(cat.id);
+    setNewCategoryName(cat.name);
+    setCategoryModalOpen(true);
+  };
+
+  const submitCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (editingCategoryId) {
+      await updateCategory.mutateAsync({ id: editingCategoryId, payload: { name } });
+    } else {
+      if (!menuId) return;
+      const cat = await createCategory.mutateAsync({ menuId, name });
+      if (cat?.id) setCategoryId(cat.id);
+    }
+    setCategoryModalOpen(false);
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    try {
+      await deleteCategory.mutateAsync(categoryToDelete.id);
+      if (categoryId === categoryToDelete.id) setCategoryId('');
+    } finally {
+      setCategoryToDelete(null);
+    }
+  };
 
   const [activeItemId, setActiveItemId] = useState('');
   const activeItem = menuItems.find((item) => item.id === activeItemId);
@@ -213,6 +313,13 @@ const MenuManagementPage = () => {
     setVolumeName(item.volumeName ?? '');
     setPrice(String(item.price));
     setImage(item.image ?? '');
+  };
+
+  const confirmDeleteItem = async () => {
+    if (!activeItem) return;
+    await deleteMenuItem.mutateAsync(activeItem.id);
+    resetForm();
+    setConfirmDeleteOpen(false);
   };
 
   const onCreateMenu = async (event: FormEvent) => {
@@ -284,7 +391,14 @@ const MenuManagementPage = () => {
             </Label>
             <Label>
               Կատեգորիան
-              <Dropdown value={categoryId} options={categoryOptions} placeholder="Ընտրել կատեգորիան" onChange={setCategoryId} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <Dropdown value={categoryId} options={categoryOptions} placeholder="Ընտրել կատեգորիան" onChange={setCategoryId} />
+                </div>
+                <Button type="button" variant="secondary" onClick={openAddCategory}>
+                  + Կատեգորիա
+                </Button>
+              </div>
             </Label>
           </Grid2>
 
@@ -332,6 +446,11 @@ const MenuManagementPage = () => {
 
           <FooterBar>
             <Button type="button" variant="secondary" onClick={resetForm}>Չեղարկել</Button>
+            {activeItem && (
+              <Button type="button" variant="ghost" onClick={() => setConfirmDeleteOpen(true)}>
+                🗑 Ջնջել ապրանքը
+              </Button>
+            )}
             <Button type="submit" disabled={!menuId || createMenuItem.isPending}>
               {createMenuItem.isPending ? 'Saving...' : 'Save Product'}
             </Button>
@@ -360,6 +479,59 @@ const MenuManagementPage = () => {
           {activeItem && <Muted>Ընտրված: {activeItem.name} (article #{activeItem.article})</Muted>}
         </Card>
       </Shell>
+
+      {confirmDeleteOpen && activeItem && (
+        <Modal title="Ջնջել ապրանքը" width="min(440px, 100%)" onClose={() => setConfirmDeleteOpen(false)}>
+          <div>«{activeItem.name}» ապրանքը ջնջե՞լ։ Գործողությունն անշրջելի է։</div>
+          <ModalActions>
+            <Button type="button" variant="secondary" onClick={() => setConfirmDeleteOpen(false)}>Չեղարկել</Button>
+            <Button type="button" onClick={confirmDeleteItem} disabled={deleteMenuItem.isPending}>
+              {deleteMenuItem.isPending ? '...' : 'Ջնջել'}
+            </Button>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {categoryModalOpen && (
+        <Modal
+          title={editingCategoryId ? 'Փոխել կատեգորիան' : 'Նոր կատեգորիա'}
+          width="min(440px, 100%)"
+          onClose={() => setCategoryModalOpen(false)}
+        >
+          <Label>
+            Կատեգորիայի անունը
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Օր. Burger"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') submitCategory(); }}
+            />
+          </Label>
+          <ModalActions>
+            <Button type="button" variant="secondary" onClick={() => setCategoryModalOpen(false)}>Չեղարկել</Button>
+            <Button
+              type="button"
+              onClick={submitCategory}
+              disabled={!newCategoryName.trim() || createCategory.isPending || updateCategory.isPending}
+            >
+              {createCategory.isPending || updateCategory.isPending ? '...' : editingCategoryId ? 'Պահել' : 'Ստեղծել'}
+            </Button>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {categoryToDelete && (
+        <Modal title="Ջնջել կատեգորիան" width="min(440px, 100%)" onClose={() => setCategoryToDelete(null)}>
+          <div>«{categoryToDelete.name}» կատեգորիան ջնջե՞լ։</div>
+          <ModalActions>
+            <Button type="button" variant="secondary" onClick={() => setCategoryToDelete(null)}>Չեղարկել</Button>
+            <Button type="button" onClick={confirmDeleteCategory} disabled={deleteCategory.isPending}>
+              {deleteCategory.isPending ? '...' : 'Ջնջել'}
+            </Button>
+          </ModalActions>
+        </Modal>
+      )}
     </PageRoot>
   );
 };

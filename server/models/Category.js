@@ -10,6 +10,11 @@ Category.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    // A category belongs to a menu (categories are scoped per-menu).
+    menuId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
     name: {
       type: DataTypes.STRING(128),
       allowNull: false,
@@ -24,8 +29,9 @@ Category.init(
     modelName: 'Category',
     tableName: 'categories',
     indexes: [
-      { unique: true, fields: ['name'], name: 'categories_name' },
-      { unique: true, fields: ['slug'], name: 'categories_slug' },
+      // Unique per menu (so two menus can each have a "Burger" category).
+      { unique: true, fields: ['menu_id', 'slug'], name: 'categories_menu_slug' },
+      { fields: ['menu_id'] },
     ],
   }
 );

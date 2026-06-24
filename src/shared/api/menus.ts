@@ -25,9 +25,25 @@ export const deleteMenuRequest = async (menuId: string) => {
   await api.delete(`/menus/${menuId}`);
 };
 
-export const getCategoriesRequest = async () => {
-  const response = await api.get<ApiEnvelope<Category[]>>('/categories');
+export const getCategoriesRequest = async (menuId?: string | null) => {
+  const response = await api.get<ApiEnvelope<Category[]>>('/categories', {
+    params: menuId ? { menuId } : undefined,
+  });
   return response.data.data;
+};
+
+export const createCategoryRequest = async (payload: { menuId: string; name: string; slug?: string }) => {
+  const response = await api.post<ApiEnvelope<Category>>('/categories', payload);
+  return response.data.data;
+};
+
+export const updateCategoryRequest = async (id: string, payload: { name?: string; slug?: string }) => {
+  const response = await api.patch<ApiEnvelope<Category>>(`/categories/${id}`, payload);
+  return response.data.data;
+};
+
+export const deleteCategoryRequest = async (id: string) => {
+  await api.delete(`/categories/${id}`);
 };
 
 export const getMenuItemsRequest = async (menuId: string, search?: string) => {
@@ -40,4 +56,8 @@ export const getMenuItemsRequest = async (menuId: string, search?: string) => {
 export const createMenuItemRequest = async (menuId: string, payload: CreateMenuItemPayload) => {
   const response = await api.post<ApiEnvelope<MenuItem>>(`/menus/${menuId}/items`, payload);
   return response.data.data;
+};
+
+export const deleteMenuItemRequest = async (menuId: string, itemId: string) => {
+  await api.delete(`/menus/${menuId}/items/${itemId}`);
 };

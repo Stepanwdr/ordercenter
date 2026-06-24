@@ -45,6 +45,10 @@ const COLUMNS = {
   couriers: {
     max_orders: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 3 },
   },
+  categories: {
+    // Categories are scoped per-menu.
+    menu_id: { type: DataTypes.UUID, allowNull: true },
+  },
 };
 
 try {

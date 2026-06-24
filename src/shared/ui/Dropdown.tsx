@@ -6,6 +6,8 @@ import { Button } from '@shared/ui/Button';
 type DropdownOption = {
   value: string;
   label: ReactNode;
+  // Optional richer render shown ONLY in the open menu (trigger still uses `label`).
+  menuLabel?: ReactNode;
 };
 
 interface DropdownProps {
@@ -195,7 +197,7 @@ trigerDisabled
                   selected={option.value === value}
                   onClick={() => handleSelect(option)}
                 >
-                  {option.label}
+                  {option.menuLabel ?? option.label}
                 </Item>
               ))}
             </Menu>

@@ -13,6 +13,12 @@ class MenuItemsController {
     const item = await MenuItemService.create(menuId, req.validated);
     res.status(201).json({ success: true, data: item });
   };
+
+  static remove = async (req, res) => {
+    const { menuId, itemId } = req.params;
+    await MenuItemService.remove(menuId, itemId);
+    res.json({ success: true, data: { id: itemId } });
+  };
 }
 
 export default MenuItemsController;

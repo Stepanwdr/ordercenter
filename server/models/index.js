@@ -104,6 +104,17 @@ MenuItem.belongsTo(Menu, {
   foreignKey: 'menuId',
 });
 
+// Categories belong to a menu (scoped per-menu).
+Menu.hasMany(Category, {
+  as: 'categories',
+  foreignKey: 'menuId',
+});
+
+Category.belongsTo(Menu, {
+  as: 'menu',
+  foreignKey: 'menuId',
+});
+
 Category.hasMany(MenuItem, {
   as: 'menuItems',
   foreignKey: 'categoryId',
