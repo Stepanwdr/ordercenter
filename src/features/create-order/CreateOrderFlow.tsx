@@ -382,10 +382,10 @@ const Label = styled.label`
 const Page = styled.main`
     display: grid;
     gap: 14px;
-    overflow: auto;
-    max-height: 90vh;
     width: 100%;
     grid-template-columns: 3fr 1fr;
+    /* No own scroll — the Drawer's Content is the single scroll container (avoids the
+       double scrollbar). The OrderPanel stays sticky relative to that container. */
 `;
 
 const Header = styled.div`
