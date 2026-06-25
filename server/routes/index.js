@@ -27,7 +27,6 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/restaurants', restaurantRoutes);
 router.use('/orders', orderRoutes);
-// New menu-related routes
 router.use('/restaurants/:restaurantId/menus', menusRoutes);
 router.use('/menus', menusRoutes);
 router.use('/menus', menuItemsRoutes);

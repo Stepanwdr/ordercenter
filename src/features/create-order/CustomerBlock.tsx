@@ -24,20 +24,20 @@ export const CustomerBlock: FC<Props> = ({setFormData,formData}) => {
         onChange={(event) => setFormData('customerPhone',event.target.value)}
         placeholder="+374 00 000000"
       />
+      <InputWrapper>
+        {/*<Label>Ստացման եղանակ</Label>*/}
+        <Dropdown
+          value={formData.orderType}
+          options={[
+            { value: 'delivery', label: 'Առաքում' },
+            { value: 'dine_in', label: 'Տեղում' },
+          ]}
+          placeholder="Ընտրել"
+          triggerDisplay="chip"
+          onChange={(value) => setFormData('orderType', value || 'delivery')}
+        />
+      </InputWrapper>
     </FieldGrid>
-    <InputWrapper>
-      <Label>Ստացման եղանակ</Label>
-      <Dropdown
-        value={formData.orderType}
-        options={[
-          { value: 'delivery', label: 'Առաքում' },
-          { value: 'dine_in', label: 'Տեղում' },
-        ]}
-        placeholder="Ընտրել"
-        triggerDisplay="chip"
-        onChange={(value) => setFormData('orderType', value || 'delivery')}
-      />
-    </InputWrapper>
     {formData.orderType === 'delivery' && (
       <>
       <FieldGrid>
@@ -84,7 +84,7 @@ export const CustomerBlock: FC<Props> = ({setFormData,formData}) => {
             />
           </InputWrapper>
           <InputWrapper>
-            <Label>Բնակարան/տուն/գրասենյակ</Label>
+            <Label>Բնակարան/տուն</Label>
             <Input
               value={formData.apartment}
               onChange={(event) => setFormData("apartment",event.target.value)}
@@ -99,18 +99,17 @@ export const CustomerBlock: FC<Props> = ({setFormData,formData}) => {
               placeholder="Դոմոֆոն"
             />
           </InputWrapper>
-          <InputWrapper>
-            <Label>Մեկնաբանություն</Label>
-            <Input
-              value={formData.addressComment}
-              onChange={(event) => setFormData("addressComment",event.target.value)}
-              placeholder="Մեկնաբանություն"
-            />
-          </InputWrapper>
         </FieldGrid>
-
       </>
     )}
+      <InputWrapper>
+        <Label>Մեկնաբանություն</Label>
+        <Input
+          value={formData.addressComment}
+          onChange={(event) => setFormData("addressComment",event.target.value)}
+          placeholder="Մեկնաբանություն"
+        />
+      </InputWrapper>
   </Section>)
 }
 
@@ -145,10 +144,6 @@ const BlockTitle = styled.h2`
 
 const FieldGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
-
-  @media (max-width: 760px) {
-    grid-template-columns: 1fr;
-  }
 `;

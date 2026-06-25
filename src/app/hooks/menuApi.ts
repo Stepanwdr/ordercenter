@@ -13,6 +13,7 @@ import {
   updateMenuRequest,
 } from '@shared/api/menus';
 import type { Category, CreateMenuItemPayload, CreateMenuPayload, Menu, MenuItem, UpdateMenuPayload } from '@shared/types/Menu';
+import {toast} from "react-toastify";
 
 export const useMenusQuery = (restaurantId: string | null) =>
   useQuery<Menu[]>({
@@ -45,6 +46,7 @@ export const useUpdateMenuMutation = (restaurantId: string) => {
     mutationFn: async ({ menuId, payload }: { menuId: string; payload: UpdateMenuPayload }) =>
       updateMenuRequest(menuId, restaurantId,payload),
     onSuccess: async () => {
+      toast.success("Մենյուի անունը փոփոխվեց")
       await queryClient.invalidateQueries({ queryKey: ['menus', restaurantId] });
       await queryClient.invalidateQueries({ queryKey: ['categories'] });
     },

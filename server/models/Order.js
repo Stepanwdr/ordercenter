@@ -154,6 +154,11 @@ Order.init(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    // Delivery distance for the order, in km.
+    distance:{
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
     courierRestaurantAt: {
       type: DataTypes.DATE,
       allowNull: true,

@@ -189,6 +189,7 @@ class OrderService {
           operatorId,
           restaurantId: payload.restaurantId,
           branchId: payload.branchId ?? null,
+          distance: payload.distance ?? null,
           courierId: payload.courierId ?? null,
           customerPhone: payload.customerPhone ?? null,
           deliveryAddress: payload.deliveryAddress ?? null,
@@ -411,6 +412,7 @@ class OrderService {
       if (payload[key] !== undefined) order[key] = payload[key];
     }
     if (payload.deliveryFee !== undefined) order.deliveryFee = Number(payload.deliveryFee) || 0;
+    if (payload.distance !== undefined) order.distance = payload.distance === '' || payload.distance == null ? null : Number(payload.distance);
     await order.save();
     try {
       const io = getIo();

@@ -13,7 +13,7 @@ import { DateRangePicker, type DateRange } from '@shared/ui/DateRangePicker';
 import { useOutsideClick } from '@shared/lib/useOutsideClick';
 import {
   useCouriersQuery,
-  useOrdersQuery,
+  useOrdersPaginatedQuery,
   useAssignCourierMutation,
   useUpdateOrderCourierStatusMutation,
   useUpdateOrderStatusMutation,
@@ -58,6 +58,9 @@ const orderStatusOptions: { value: OrderStatus; label: string }[] = [
 
 // localStorage key for the user's persisted orders-table column order.
 const COLUMN_ORDER_KEY = 'orders_table_column_order';
+
+// Server-side page size for the orders table.
+const PAGE_SIZE = 10;
 
 // Order receipt method (способ получения).
 const orderTypeOptions = [
@@ -152,14 +155,30 @@ const OrdersPage = () => {
   const dateTo = dateRange.end ? dateRange.end.toISOString() : undefined;
   const debouncedSearch = useDebounce(search, 500);
   const { data: couriersResponse } = useCouriersQuery();
-  const { data: apiOrders } = useOrdersQuery({courierId,status: activeStatus, search: debouncedSearch, dateFrom, dateTo, limit: 1000});
+
+  // Server-side pagination + sorting + filtering: the backend returns only the current
+  // page plus meta (total / totalPages). No client-side slicing/sorting anymore.
+  const sort = sortColumns[0];
+  const ordersQuery = useOrdersPaginatedQuery({
+    courierId,
+    status: activeStatus,
+    search: debouncedSearch,
+    dateFrom,
+    dateTo,
+    page: currentPage,
+    limit: PAGE_SIZE,
+    sortBy: sort?.columnKey,
+    sortOrder: sort?.direction,
+  });
+  const orders = ordersQuery.data?.data ?? [];
+  const ordersMeta = ordersQuery.data?.meta;
+  const totalCount = ordersMeta?.total ?? 0;
+  const totalPages = Math.max(1, ordersMeta?.totalPages ?? 1);
 
   const allCouriers = couriersResponse?.data ?? [];
   // Filter couriers by selected restaurant if present
   const courierOptions = allCouriers
     .map((c) => ({ value: (c as any).userId ?? (c as any).id, label: c.user?.name ?? c.user?.email ?? (c as any).name ?? 'Courier' }));
-  const pageSize = 10;
-  const orders= apiOrders &&  apiOrders?.length ? apiOrders : [];
   // const couriers = useMemo(
   //   () => [
   //     { value: 'all', label: 'Առաքիչների ցանկ' },
@@ -172,42 +191,6 @@ const OrdersPage = () => {
   // );
   const couriers = [] as Courier[];
 
-  // Calendar range filter on createdAt (client-side, inclusive). The picker already
-  // carries exact instants (start/end Date with their times), so compare directly.
-  const dateFilteredOrders = useMemo(() => {
-    const { start, end } = dateRange;
-    if (!start && !end) return orders;
-    const fromMs = start ? start.getTime() : -Infinity;
-    const toMs = end ? end.getTime() : Infinity;
-    return orders.filter((o) => {
-      const t = new Date(o.createdAt).getTime();
-      return t >= fromMs && t <= toMs;
-    });
-  }, [orders, dateRange]);
-
-  const sortedOrders = useMemo(() => {
-    if (sortColumns.length === 0) return dateFilteredOrders;
-
-    const { columnKey, direction } = sortColumns[0];
-
-    return [...dateFilteredOrders].sort((a: any, b: any) => {
-      const aValue = a[columnKey];
-      const bValue = b[columnKey];
-
-      if (aValue == null) return 1;
-      if (bValue == null) return -1;
-
-      if (aValue < bValue) {
-        return direction === 'ASC' ? -1 : 1;
-      }
-
-      if (aValue > bValue) {
-        return direction === 'ASC' ? 1 : -1;
-      }
-
-      return 0;
-    });
-  }, [dateFilteredOrders, sortColumns]);
   const updateOrderPayMethodMutation = useUpdateOrderPayMethodMutation();
 
   const handlePaidMethodChange = useCallback(async (id: string, value: PaymentMethod) => {
@@ -241,12 +224,6 @@ const OrdersPage = () => {
   const assignCourierMutation = useAssignCourierMutation();
   const updateOrderCourierStatusMutation = useUpdateOrderCourierStatusMutation();
   const updateOrderStatusMutation = useUpdateOrderStatusMutation();
-  const totalPages = Math.max(1, Math.ceil(sortedOrders.length / pageSize));
-
-  const pageRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedOrders.slice(start, start + pageSize);
-  }, [currentPage, sortedOrders]);
 
   const handleOrderStatusChange = useCallback(
     async (id: string, value: OrderStatus) => {
@@ -488,7 +465,7 @@ const OrdersPage = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
-  }, [search, activeStatus, selectedCourier, dateFrom, dateTo]);
+  }, [search, activeStatus, selectedCourier, courierId, dateFrom, dateTo, sortColumns]);
 
 
   return (
@@ -513,7 +490,7 @@ const OrdersPage = () => {
 
         </Controls>
         <ControlsRow>
-          <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {sortedOrders.length} պատվեր  </span>
+          <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {totalCount} պատվեր  </span>
         </ControlsRow>
       </Toolbar>
 
@@ -545,7 +522,7 @@ const OrdersPage = () => {
       <ContentRow>
         <TableSection style={{ flex: 1, minWidth: 0 }}>
 
-          <Table<Order> rows={pageRows} columns={visibleColumns} className={'orders-table'} sortColumns={sortColumns} onSortColumnsChange={setSortColumns} onColumnsReorder={handleColumnsReorder} onRowDoubleClick={(row) => setRudOrder(row)} />
+          <Table<Order> rows={orders} columns={visibleColumns} className={'orders-table'} sortColumns={sortColumns} onSortColumnsChange={setSortColumns} onColumnsReorder={handleColumnsReorder} onRowDoubleClick={(row) => setRudOrder(row)} />
           <Pagination currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
         </TableSection>
 

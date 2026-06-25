@@ -27,6 +27,8 @@ const COLUMNS = {
     next_dispatch_at: { type: DataTypes.DATE, allowNull: true },
     // Which branch (restaurant_addresses.id) fulfills the order.
     branch_id: { type: DataTypes.UUID, allowNull: true },
+    // Delivery distance, km.
+    distance: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   },
   // Branch (филиал) operational fields added on top of the simple address list.
   restaurant_addresses: {

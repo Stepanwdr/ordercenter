@@ -48,6 +48,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pickupTime, setPickupTime] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
+  const [distance, setDistance] = useState('');
   const [draftId, setDraftId] = useState<string | undefined>(undefined);
   const [drafts, setDrafts] = useState<OrderDraft[]>(() => getDrafts());
 
@@ -115,6 +116,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
       orderItems,
     };
     if (branchId) payload.branchId = branchId;
+    if (distance.trim() !== '') payload.distance = Number(distance) || 0;
     if (courierId) payload.courierId = courierId;
     await mutate.mutateAsync(payload);
     if (draftId) {
@@ -237,31 +239,38 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
                         formData={formData}/>
         }
         {cart.length > 0 &&
-          <InputWrapper>
-            <Label>
-              Տրման ժամը
-            </Label>
+          <FieldsRow>
+            <InputWrapper>
+              <Label>Տրման ժամը</Label>
               <Input
                 type="time"
                 value={pickupTime}
                 onChange={(event) => setPickupTime(event.target.value)}
                 placeholder="Տրման ժամը"
               />
-         </InputWrapper>
-        }
-        {cart.length > 0 &&
-          <InputWrapper>
-            <Label>
-              Առաքման գումարը
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              value={deliveryFee}
-              onChange={(event) => setDeliveryFee(event.target.value)}
-              placeholder="0"
-            />
-         </InputWrapper>
+            </InputWrapper>
+            <InputWrapper>
+              <Label>Առաքման գումարը</Label>
+              <Input
+                type="number"
+                min={0}
+                value={deliveryFee}
+                onChange={(event) => setDeliveryFee(event.target.value)}
+                placeholder="0"
+              />
+            </InputWrapper>
+            <InputWrapper>
+              <Label>Հեռավորությունը (կմ)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={distance}
+                onChange={(event) => setDistance(event.target.value)}
+                placeholder="0"
+              />
+            </InputWrapper>
+          </FieldsRow>
         }
       </Main>
       <OrderPanel>
@@ -355,6 +364,15 @@ display: flex;
 gap: 8px;
     flex-direction: column;
 ;`
+
+const FieldsRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
 const Label = styled.label`
   display: grid;
   gap: 8px;

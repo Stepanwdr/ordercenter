@@ -41,7 +41,7 @@ interface UpdateCourierPayload extends CreateCourierPayload {
 export interface query {
   page?:number,
   limit?:number,
-  sortBy?: 'createdAt',
+  sortBy?: string,
   sortOrder?: 'DESC' | 'ASC'  ,
   status?:string,
   search?:string,

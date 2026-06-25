@@ -76,6 +76,14 @@ const Grid2 = styled.div`
     grid-template-columns: 1fr;
   }
 `;
+const Grid3 = styled.div`
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+`;
 
 const Label = styled.label`
   display: grid;
@@ -196,7 +204,29 @@ const MenuManagementPage = () => {
   const categoriesQuery = useCategoriesQuery(menuId || null);
 
   const menus = menusQuery.data ?? [];
-  const menuOptions = menus.map((menu) => ({ value: menu.id, label: menu.name }));
+  const menuOptions = menus.map((menu) => ({
+    value: menu.id,
+    label: menu.name,
+    menuLabel: (
+      <CatOption>
+        <span>{menu.name}</span>
+        <CatActions>
+          <CatIcon
+            title="Փոխել անունը"
+            onClick={(e) => { e.stopPropagation(); openRenameMenu({ id: menu.id, name: menu.name }); }}
+          >
+            ✏️
+          </CatIcon>
+          <CatIcon
+            title="Ջնջել"
+            onClick={(e) => { e.stopPropagation(); setMenuToDelete({ id: menu.id, name: menu.name }); }}
+          >
+            🗑
+          </CatIcon>
+        </CatActions>
+      </CatOption>
+    ),
+  }));
   const categories = categoriesQuery.data ?? [];
   const categoryOptions = categories.map((category) => ({
     value: category.id,
@@ -226,6 +256,11 @@ const MenuManagementPage = () => {
   const createMenu = useCreateMenuMutation(restaurantId);
   const updateMenu = useUpdateMenuMutation(restaurantId);
   const deleteMenu = useDeleteMenuMutation(restaurantId);
+  // Menu rename/delete via dropdown icons + modals (like categories).
+  const [menuRenameOpen, setMenuRenameOpen] = useState(false);
+  const [menuRenameId, setMenuRenameId] = useState('');
+  const [menuRenameName, setMenuRenameName] = useState('');
+  const [menuToDelete, setMenuToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const menuItemsQuery = useMenuItemsQuery(menuId || null);
   const menuItems = menuItemsQuery.data ?? [];
@@ -329,17 +364,27 @@ const MenuManagementPage = () => {
     setNewMenuName('');
   };
 
-  const onDeleteMenu = async () => {
-    if (!menuId) return;
-    await deleteMenu.mutateAsync(menuId);
-    setMenuId('');
-    resetForm();
+  const openRenameMenu = (m: { id: string; name: string }) => {
+    setMenuRenameId(m.id);
+    setMenuRenameName(m.name);
+    setMenuRenameOpen(true);
   };
 
-  const onRenameMenu = async () => {
-    if (!menuId || !newMenuName.trim()) return;
-    await updateMenu.mutateAsync({ menuId, payload: { name: newMenuName.trim() } });
-    setNewMenuName('');
+  const submitRenameMenu = async () => {
+    const name = menuRenameName.trim();
+    if (!menuRenameId || !name) return;
+    await updateMenu.mutateAsync({ menuId: menuRenameId, payload: { name } });
+    setMenuRenameOpen(false);
+  };
+
+  const confirmDeleteMenu = async () => {
+    if (!menuToDelete) return;
+    await deleteMenu.mutateAsync(menuToDelete.id);
+    if (menuId === menuToDelete.id) {
+      setMenuId('');
+      resetForm();
+    }
+    setMenuToDelete(null);
   };
 
   const onSaveItem = async (event: FormEvent) => {
@@ -369,23 +414,21 @@ const MenuManagementPage = () => {
           <Dropdown label={'Ընտրել ռեստորանը'} value={restaurantId} options={restaurantOptions} placeholder="Ընտրել ռեստորանը" onChange={setRestaurantId} />
           <InputWrapper>
             <Label>
-              Նոր / Անվանափոխել
+              Նոր մենյու
             </Label>
-            <Input value={newMenuName} onChange={(event) => setNewMenuName(event.target.value)} placeholder="Նոր / Անվանափոխել" />
+            <Input value={newMenuName} onChange={(event) => setNewMenuName(event.target.value)} placeholder="Նոր մենյու" />
           </InputWrapper>
           <Dropdown label={'Ընտրել մենյուն'} value={menuId} options={menuOptions} placeholder="Ընտրել մենյուն" onChange={setMenuId} />
         </Grid2>
         <Actions>
           <Button type="submit" disabled={!restaurantId || createMenu.isPending}>Ստեղծել մենյու</Button>
-          <Button type="button" variant="secondary" onClick={onRenameMenu} disabled={!menuId || updateMenu.isPending}>Անվանափոխել</Button>
-          <Button type="button" variant="ghost" onClick={onDeleteMenu} disabled={!menuId || deleteMenu.isPending}>Ջնջել</Button>
         </Actions>
       </Card>
       <Shell>
         <Card as="form" onSubmit={onSaveItem}>
           <CardTitle>Խմբագրել ապրանքը</CardTitle>
           <Grid2>
-            <Label>
+            <Label style={{maxWidth:"250px"}}>
               Ապրանքի անունը
               <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ապրանքի անունը" />
             </Label>
@@ -407,13 +450,11 @@ const MenuManagementPage = () => {
             <TextArea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Product description..." />
           </Label>
           <CardTitle>Գույքագրում և գնագոյացում</CardTitle>
-          <Grid2>
+          <Grid3>
             <Label>
               Գին
               <Input type="number" min={0} step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} />
             </Label>
-          </Grid2>
-          <Grid2>
             <Label>
               Ծավալ (թիվ)
               <Input
@@ -433,8 +474,7 @@ const MenuManagementPage = () => {
                 placeholder="լ / մլ / գ"
               />
             </Label>
-          </Grid2>
-
+          </Grid3>
           <Label>
             Ապրանքի նկարը
             <ImageUploader
@@ -443,7 +483,6 @@ const MenuManagementPage = () => {
               label="Քաշել նկարը կամ ընտրել ֆայլ"
             />
           </Label>
-
           <FooterBar>
             <Button type="button" variant="secondary" onClick={resetForm}>Չեղարկել</Button>
             {activeItem && (
@@ -528,6 +567,39 @@ const MenuManagementPage = () => {
             <Button type="button" variant="secondary" onClick={() => setCategoryToDelete(null)}>Չեղարկել</Button>
             <Button type="button" onClick={confirmDeleteCategory} disabled={deleteCategory.isPending}>
               {deleteCategory.isPending ? '...' : 'Ջնջել'}
+            </Button>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {menuRenameOpen && (
+        <Modal title="Փոխել մենյուի անունը" width="min(440px, 100%)" onClose={() => setMenuRenameOpen(false)}>
+          <Label>
+            Մենյուի անունը
+            <Input
+              value={menuRenameName}
+              onChange={(e) => setMenuRenameName(e.target.value)}
+              placeholder="Մենյուի անունը"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') submitRenameMenu(); }}
+            />
+          </Label>
+          <ModalActions>
+            <Button type="button" variant="secondary" onClick={() => setMenuRenameOpen(false)}>Չեղարկել</Button>
+            <Button type="button" onClick={submitRenameMenu} disabled={!menuRenameName.trim() || updateMenu.isPending}>
+              {updateMenu.isPending ? '...' : 'Պահել'}
+            </Button>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {menuToDelete && (
+        <Modal title="Ջնջել մենյուն" width="min(440px, 100%)" onClose={() => setMenuToDelete(null)}>
+          <div>«{menuToDelete.name}» մենյուն ջնջե՞լ։ Կջնջվեն նաև դրա կատեգորիաներն ու ապրանքները։</div>
+          <ModalActions>
+            <Button type="button" variant="secondary" onClick={() => setMenuToDelete(null)}>Չեղարկել</Button>
+            <Button type="button" onClick={confirmDeleteMenu} disabled={deleteMenu.isPending}>
+              {deleteMenu.isPending ? '...' : 'Ջնջել'}
             </Button>
           </ModalActions>
         </Modal>

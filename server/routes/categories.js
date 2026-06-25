@@ -8,7 +8,9 @@ const router = express.Router();
 
 router.get('/', asyncHandler(CategoriesController.list));
 router.post('/', validate(schemas.createCategory), asyncHandler(CategoriesController.create));
-router.patch('/:id', validate(schemas.updateCategory), asyncHandler(CategoriesController.update));
+// Accept both PUT and PATCH for rename (the client uses PUT).
+router.put('/:id', validate(schemas.updateCategory), asyncHandler(CategoriesController.update));
+router.put('/:id', validate(schemas.updateCategory), asyncHandler(CategoriesController.update));
 router.delete('/:id', asyncHandler(CategoriesController.remove));
 
 export default router;

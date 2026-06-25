@@ -5,7 +5,7 @@ const StyledInput = styled.input`
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: ${({ theme }) => theme.colors.text};
-  border-radius: 14px;
+  border-radius: 36px;
   padding: 14px 16px;
   outline: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;

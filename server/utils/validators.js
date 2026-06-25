@@ -117,6 +117,7 @@ export const schemas = {
   createOrder: z.object({
     price: z.coerce.number().positive(),
     deliveryFee: z.coerce.number().min(0).optional(),
+    distance: z.coerce.number().min(0).optional(),
     restaurantId: z.string().uuid(),
     branchId: z.string().uuid().optional(),
     courierId: z.string().uuid().optional(),
@@ -172,6 +173,7 @@ export const schemas = {
     deliveryAddress: z.string().max(512).optional(),
     prepTime: z.string().max(32).optional(),
     deliveryFee: z.coerce.number().min(0).optional(),
+    distance: z.coerce.number().min(0).optional(),
     orderType: z.enum(['dine_in', 'takeaway', 'delivery']).optional(),
     payMethod: z.enum(OrderPaymentMethod).optional(),
     status: orderStatusSchema.optional(),

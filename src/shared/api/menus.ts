@@ -17,7 +17,7 @@ export const createMenuRequest = async (restaurantId: string, payload: CreateMen
 };
 
 export const updateMenuRequest = async (menuId: string,restoranId:string, payload: UpdateMenuPayload) => {
-  const response = await api.patch<ApiEnvelope<Menu>>(`/restaurants/${restoranId}/menus/${menuId}`, payload);
+  const response = await api.put<ApiEnvelope<Menu>>(`/restaurants/${restoranId}/menus/${menuId}`, payload);
   return response.data.data;
 };
 
@@ -38,7 +38,7 @@ export const createCategoryRequest = async (payload: { menuId: string; name: str
 };
 
 export const updateCategoryRequest = async (id: string, payload: { name?: string; slug?: string }) => {
-  const response = await api.patch<ApiEnvelope<Category>>(`/categories/${id}`, payload);
+  const response = await api.put<ApiEnvelope<Category>>(`/categories/${id}`, payload);
   return response.data.data;
 };
 
