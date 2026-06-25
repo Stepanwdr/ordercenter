@@ -229,7 +229,6 @@ export const useCreateCourierMutation = (successCb:()=>void) => {
   });
 };
 
-// Orders mutations (separate tanstack hooks for actions formerly on useOrdersStore)
 export const useCreateOrderMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -344,6 +343,31 @@ export const useUpdateOrderPayMethodMutation = () => {
     mutationKey: ['update-order-pay-method'],
     mutationFn: async ({ id, payMethod }: { id: string; payMethod: string }) =>
       ordersApi.updateOrderPayMethod(id, payMethod),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+};
+
+export const useUpdateOrderTypeMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['update-order-type'],
+    mutationFn: async ({ id, orderType }: { id: string; orderType: string }) =>
+      ordersApi.updateOrderType(id, orderType),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+};
+
+export const useDeleteOrderMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationKey: ['delete-order'],
+    mutationFn: async (id) => ordersApi.deleteOrder(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });

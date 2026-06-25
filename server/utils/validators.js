@@ -163,6 +163,27 @@ export const schemas = {
   updateOrderPayMethod: z.object({
     payMethod: z.enum(OrderPaymentMethod),
   }),
+  updateOrderType: z.object({
+    orderType: z.enum(['dine_in', 'takeaway', 'delivery']),
+  }),
+  updateOrder: z.object({
+    customerName: z.string().max(255).optional(),
+    customerPhone: z.string().max(64).optional(),
+    deliveryAddress: z.string().max(512).optional(),
+    prepTime: z.string().max(32).optional(),
+    deliveryFee: z.coerce.number().min(0).optional(),
+    orderType: z.enum(['dine_in', 'takeaway', 'delivery']).optional(),
+    payMethod: z.enum(OrderPaymentMethod).optional(),
+    status: orderStatusSchema.optional(),
+    city: z.string().max(128).optional(),
+    street: z.string().max(128).optional(),
+    building: z.string().max(64).optional(),
+    apartment: z.string().max(64).optional(),
+    entrance: z.string().max(64).optional(),
+    floor: z.string().max(64).optional(),
+    domofon: z.string().max(64).optional(),
+    addressComment: z.string().max(512).optional(),
+  }),
   createUser: z.object({
     email: z.string().email(),
     password: z.string().min(8).max(72),

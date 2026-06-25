@@ -76,6 +76,7 @@ interface TableProps<R> {
   className?: string;
   onColumnsReorder?: (sourceKey: string, targetKey: string) => void;
   onColumnResize?: (column: Column<R>, width: number) => void;
+  onRowDoubleClick?: (row: R) => void;
 
   sortColumns?: readonly SortColumn[];
   onSortColumnsChange?: (sortColumns: SortColumn[]) => void;
@@ -87,6 +88,7 @@ export const Table = <R extends object = Row>({
   className,
   onColumnsReorder,
   onColumnResize,
+  onRowDoubleClick,
   sortColumns,
   onSortColumnsChange
 }: TableProps<R>) => {
@@ -133,6 +135,7 @@ export const Table = <R extends object = Row>({
         rows={renderedRows}
         onColumnsReorder={handleColumnsReorder}
         onColumnResize={handleColumnResize}
+        onCellDoubleClick={(args) => onRowDoubleClick?.(args.row)}
         className={'data-grid'}
         sortColumns={sortColumns}
         onSortColumnsChange={onSortColumnsChange}

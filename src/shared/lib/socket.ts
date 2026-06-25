@@ -1,5 +1,4 @@
 import { io, Socket } from 'socket.io-client';
-import { useOrdersStore } from '@store/ordersStore';
 
 let socket: Socket | null = null;
 
@@ -11,18 +10,16 @@ export const initializeSocket = () => {
   socket = io(import.meta.env.VITE_WS_URL ?? 'http://localhost:4000', {
   });
 
-  const store = useOrdersStore.getState();
 
   socket.on('connect', () => {
     console.info('Socket cosnnected:', socket?.id);
   });
 
   socket.on('courier:update', (payload: { courierId: string; status: string; orderId?: string }) => {
-    store.setCourierUpdate(payload);
+
   });
 
   socket.on('order:update', (order) => {
-    store.mergeOrder(order);
   });
 
   return () => {

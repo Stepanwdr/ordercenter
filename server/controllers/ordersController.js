@@ -52,6 +52,21 @@ class OrdersController {
     const order = await OrderService.updateOrderPayMethod(req.params.id, req.validated.payMethod);
     res.json({ success: true, data: order });
   };
+
+  static updateType = async (req, res) => {
+    const order = await OrderService.updateOrderType(req.params.id, req.validated.orderType);
+    res.json({ success: true, data: order });
+  };
+
+  static update = async (req, res) => {
+    const order = await OrderService.updateOrder(req.params.id, req.validated);
+    res.json({ success: true, data: order });
+  };
+
+  static remove = async (req, res) => {
+    await OrderService.deleteOrder(req.params.id);
+    res.json({ success: true, data: { id: req.params.id } });
+  };
 }
 
 export default OrdersController;

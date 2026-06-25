@@ -25,16 +25,19 @@ export const CustomerBlock: FC<Props> = ({setFormData,formData}) => {
         placeholder="+374 00 000000"
       />
     </FieldGrid>
-    {/*<Dropdown*/}
-    {/*  value={formData.orderType}*/}
-    {/*  options={[*/}
-    {/*    { value: 'dine_in', label: 'Տեղում' },*/}
-    {/*    { value: 'takeaway', label: 'Տանելու' },*/}
-    {/*    { value: 'delivery', label: 'Առաքում' },*/}
-    {/*  ]}*/}
-    {/*  placeholder="Order type"*/}
-    {/*  onChange={(value) => setFormData('orderType',value as 'dine_in' | 'takeaway' | 'delivery')}*/}
-    {/*/>*/}
+    <InputWrapper>
+      <Label>Ստացման եղանակ</Label>
+      <Dropdown
+        value={formData.orderType}
+        options={[
+          { value: 'delivery', label: 'Առաքում' },
+          { value: 'dine_in', label: 'Տեղում' },
+        ]}
+        placeholder="Ընտրել"
+        triggerDisplay="chip"
+        onChange={(value) => setFormData('orderType', value || 'delivery')}
+      />
+    </InputWrapper>
     {formData.orderType === 'delivery' && (
       <>
       <FieldGrid>

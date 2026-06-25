@@ -384,6 +384,54 @@ class OrderService {
     } catch {}
     return order;
   }
+
+  static async updateOrderType(orderId, orderType) {
+    const order = await Order.findByPk(orderId);
+    if (!order) throw new AppError(404, 'Order not found');
+    order.orderType = orderType;
+    await order.save();
+    try {
+      const io = getIo();
+      if (io) io.emit('order:update', order);
+    } catch {}
+    return order;
+  }
+
+  // General edit of an order's editable fields (the RUD drawer). Only the keys present in
+  // the payload are changed.
+  static async updateOrder(orderId, payload) {
+    const order = await Order.findByPk(orderId);
+    if (!order) throw new AppError(404, 'Order not found');
+    const editable = [
+      'customerName', 'customerPhone', 'deliveryAddress', 'entrance', 'floor', 'domofon',
+      'apartment', 'addressComment', 'prepTime', 'orderType', 'payMethod', 'status',
+      'city', 'street', 'building',
+    ];
+    for (const key of editable) {
+      if (payload[key] !== undefined) order[key] = payload[key];
+    }
+    if (payload.deliveryFee !== undefined) order.deliveryFee = Number(payload.deliveryFee) || 0;
+    await order.save();
+    try {
+      const io = getIo();
+      if (io) io.emit('order:update', order);
+    } catch {}
+    return OrderService.getOrder(orderId);
+  }
+
+  static async deleteOrder(orderId) {
+    return sequelize.transaction(async (transaction) => {
+      const order = await Order.findByPk(orderId, { transaction });
+      if (!order) throw new AppError(404, 'Order not found');
+      await OrderItem.destroy({ where: { orderId }, transaction });
+      await order.destroy({ transaction });
+      try {
+        const io = getIo();
+        if (io) io.emit('order:delete', { id: orderId });
+      } catch {}
+      return { id: orderId };
+    });
+  }
 }
 
 export default OrderService;

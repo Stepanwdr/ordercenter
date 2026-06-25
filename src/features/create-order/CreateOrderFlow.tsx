@@ -241,12 +241,6 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
             <Label>
               Տրման ժամը
             </Label>
-             {/*<Input*/}
-             {/*   type="date"*/}
-             {/*   value={pickupTime}*/}
-             {/*   onChange={(event) => setPickupTime(event.target.value)}*/}
-             {/*   placeholder="Տրման ժամը"*/}
-             {/* />*/}
               <Input
                 type="time"
                 value={pickupTime}

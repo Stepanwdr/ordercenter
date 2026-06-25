@@ -11,7 +11,7 @@ export const ordersApi = {
     return response.data.data;
   },
   updateOrder: async (id: string, payload: Partial<Order>): Promise<Order> => {
-    const response = await api.patch<{ data: Order }>(`/orders/${id}`, payload);
+    const response = await api.put<{ data: Order }>(`/orders/${id}`, payload);
     return response.data.data;
   },
   sendOrder: async (id: string): Promise<Order> => {
@@ -25,5 +25,12 @@ export const ordersApi = {
   updateOrderPayMethod: async (id: string, payMethod: string): Promise<Order> => {
     const response = await api.put<{ data: Order }>(`/orders/${id}/pay-method`, { payMethod });
     return response.data.data;
+  },
+  updateOrderType: async (id: string, orderType: string): Promise<Order> => {
+    const response = await api.put<{ data: Order }>(`/orders/${id}/order-type`, { orderType });
+    return response.data.data;
+  },
+  deleteOrder: async (id: string): Promise<void> => {
+    await api.delete(`/orders/${id}`);
   },
 };

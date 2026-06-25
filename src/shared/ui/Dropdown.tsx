@@ -70,6 +70,7 @@ const Trigger = styled(Button)<{ $asTableCell?: boolean }>`
   min-width: unset;
   min-height: ${({ $asTableCell }) => ($asTableCell ? '25px' : '50px')};
   height: 100%;
+  border-radius:36px
 `;
 
 const Label = styled.div`
@@ -177,7 +178,7 @@ trigerDisabled
   return (
     <Label>
       {label && <LabelText>{label}</LabelText>}
-      {triger && <Trigger style={{background:"none",minWidth:"80px",justifyContent:"flex-end",backdropFilter:"none"}} ref={buttonRef} onClick={() => setOpen((prev) => !prev)}>{triger}</Trigger>}
+      {triger && <Trigger style={{background:"none", minWidth:"80px", justifyContent:"flex-end",backdropFilter:"none" }} ref={buttonRef} onClick={() => setOpen((prev) => !prev)}>{triger}</Trigger>}
       {!triger && <Trigger disabled={trigerDisabled} $asTableCell={asTableCell} ref={buttonRef} type="button" variant="secondary"
                 onClick={() => setOpen((prev) => !prev)}>
         <TriggerValue>

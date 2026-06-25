@@ -6,10 +6,11 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import router from './routes/index.js';
 import courierAppRouter from './routes/courierApp.js';
-import { initPolling } from './services/telegramBot.js';
+import { initPolling, initWebhook } from './services/telegramBot.js';
 import path from 'path';
 import uploadRouter from './routes/upload.js';
 import kitchenRouter from './routes/kitchen.js';
+import telegramWebhookRouter from './routes/telegramWebhook.js';
 import { initKitchenRetry } from './services/kitchen/retryWorker.js';
 import authorization from './middlewares/authorization.js';
 import errorHandler from './middlewares/errorHandler.js';
@@ -64,6 +65,8 @@ app.use('/upload', uploadRouter);
 // Kitchen channel endpoints (SSE stream / ack / POS webhooks) authenticate with a
 // per-restaurant device token, not the user JWT — mount before the auth layer.
 app.use('/kitchen', kitchenRouter);
+// Telegram webhook — public (verified by Telegram's secret-token header), before auth.
+app.use('/telegram', telegramWebhookRouter);
 app.use('/courier-app', courierAppRouter);
 app.use(authorization);
 app.use(router);
@@ -73,8 +76,9 @@ app.use(router);
 // (no additional upload routes here)
 app.use(errorHandler);
 
-// initialize telegram polling if enabled
+// initialize telegram: webhook (preferred — no 409 conflicts) or polling, per env flags
 try {
+  initWebhook();
   initPolling();
 } catch (err) {
   // ignore bot init errors

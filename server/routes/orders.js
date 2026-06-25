@@ -15,5 +15,8 @@ router.put('/:id/assign-courier', authorizeRole('admin', 'operator','dispatcher'
 router.put('/:id/status',  validate(schemas.updateOrderStatus), asyncHandler(OrdersController.updateStatus));
 router.put('/:id/courier-status', validate(schemas.updateOrderCourierStatus), asyncHandler(OrdersController.updateCourierStatus));
 router.put('/:id/pay-method',  validate(schemas.updateOrderPayMethod), asyncHandler(OrdersController.updatePayMethod));
+router.put('/:id/order-type',  validate(schemas.updateOrderType), asyncHandler(OrdersController.updateType));
+router.put('/:id', authorizeRole('admin', 'operator', 'dispatcher'), validate(schemas.updateOrder), asyncHandler(OrdersController.update));
+router.delete('/:id', authorizeRole('admin', 'operator'), asyncHandler(OrdersController.remove));
 
 export default router;
