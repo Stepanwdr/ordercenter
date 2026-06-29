@@ -42,9 +42,9 @@ export const ImageUploader = ({ value, onChange, label }: Props) => {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Preview>{localPreview ? <Img src={localPreview} alt="avatar" /> : (value ? <Img src={value} alt="avatar" /> : <span>Загрузить</span>)}</Preview>
-        <Button type="button" onClick={() => fileRef.current?.click()} style={{ height: 32 }}>
-          Выбрать файл
-        </Button>
+        {/*<Button type="button" onClick={() => fileRef.current?.click()} style={{ height: 32 }}>*/}
+        {/*  Выбрать файл*/}
+        {/*</Button>*/}
       </div>
       <HiddenInput ref={fileRef} type="file" accept="image/*" onChange={(e) => {
         const f = e.target.files?.[0]; if (f) onFileChosen(f);

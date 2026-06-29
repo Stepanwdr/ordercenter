@@ -79,6 +79,46 @@ function registerScope(prefix, kind) {
     }),
   );
 
+  // Scope identity for the KDS header: restaurant name + brand logo, and (for a branch)
+  // the branch name + address. The kitchen tablet shows this so staff can see which point
+  // they're serving. Auth is the same per-scope device token as every other endpoint.
+  router.get(
+    `${prefix}/:id/info`,
+    asyncHandler(async (req, res) => {
+      const auth = await resolveScope(req, kind);
+      if (auth.error) {
+        res.status(auth.error).json({ success: false, message: auth.message });
+        return;
+      }
+
+      let data;
+      if (kind === 'branch') {
+        // Brand logo lives on the parent restaurant; the branch carries its own name/address.
+        const restaurant = await Restaurant.findByPk(auth.entity.restaurantId, {
+          attributes: ['id', 'name', 'logo', 'photo'],
+        });
+        data = {
+          scopeKind: 'branches',
+          id: auth.entity.id,
+          name: auth.entity.name,
+          address: auth.entity.address || null,
+          restaurantName: restaurant?.name || null,
+          logo: restaurant?.logo || restaurant?.photo || auth.entity.photo || null,
+        };
+      } else {
+        data = {
+          scopeKind: 'restaurants',
+          id: auth.entity.id,
+          name: auth.entity.name,
+          address: null,
+          restaurantName: auth.entity.name,
+          logo: auth.entity.logo || auth.entity.photo || null,
+        };
+      }
+      res.json({ success: true, data });
+    }),
+  );
+
   // Agent config: the print-agent fetches its printer list here so the CRM is the single
   // source of truth (change a printer IP in the admin → the agent picks it up). Returns
   // the raw "label=ip:port,..." string the agent already knows how to parse.

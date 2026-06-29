@@ -3,40 +3,42 @@ import styled from 'styled-components';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Dropdown } from '@shared/ui/Dropdown';
-import {useRestaurantsQuery, useCreateOrderMutation} from '@app/hooks/dataApi';
+import {useRestaurantsQuery, useCreateOrderMutation, useUpdateOrderMutation} from '@app/hooks/dataApi';
 import { useCategoriesQuery, useMenuItemsQuery, useMenusQuery } from '@app/hooks/menuApi';
 import type { MenuItem } from '@shared/types/Menu';
+import type { Order } from '@shared/types/Order';
 import {CustomerBlock} from "@features/create-order/CustomerBlock.tsx";
 import { toast } from 'react-toastify';
 import { getDrafts, saveDraft, deleteDraft, type OrderDraft } from '@features/create-order/drafts';
 
-type CartItem = MenuItem & { count: number };
+type CartItem = MenuItem & { count: number; note?: string };
 
 const toCurrency = (value: number) => `${value.toFixed(2)}դր`;
 
-export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
+export const CreateOrderFlow = ({onClose, order}:{onClose:()=>void; order?: Order | null}) => {
+  const isEditing = !!order;
   const { data: restaurantsResponse } = useRestaurantsQuery();
   const restaurants = restaurantsResponse?.data ?? [];
   const categories = useCategoriesQuery().data ?? [];
 
   const [formData, setFormData] = useState({
-    customerPhone:"",
-    deliveryAddress:"",
-    entrance:"",
-    domofon:"",
-    addressComment:"",
-    customerName:"",
-    orderType:"delivery",
-    city:"",
-    street:'',
-    building:"",
-    apartment:"",
-    floor:"",
+    customerPhone: order?.customerPhone ?? "",
+    deliveryAddress: order?.deliveryAddress ?? "",
+    entrance: order?.entrance ?? "",
+    domofon: order?.domofon ?? "",
+    addressComment: order?.addressComment ?? "",
+    customerName: order?.customerName ?? "",
+    orderType: order?.orderType ?? "delivery",
+    city: (order as any)?.city ?? "",
+    street: (order as any)?.street ?? '',
+    building: (order as any)?.building ?? "",
+    apartment: (order as any)?.apartment ?? "",
+    floor: order?.floor ?? "",
   });
 
-  const [restaurantId, setRestaurantId] = useState('');
-  const [branchId, setBranchId] = useState('');
-  const [courierId, setCourierId] = useState('');
+  const [restaurantId, setRestaurantId] = useState(order?.restaurant?.id ?? '');
+  const [branchId, setBranchId] = useState(order?.branchId ?? '');
+  const [courierId, setCourierId] = useState((order as any)?.courierId ?? '');
   const menus = useMenusQuery(restaurantId || null).data ?? [];
   const menuId = menus.length && menus[0].id;
 
@@ -45,10 +47,20 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
 
   const [search, setSearch] = useState('');
   const [activeCategoryId, setActiveCategoryId] = useState('all');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [pickupTime, setPickupTime] = useState('');
-  const [deliveryFee, setDeliveryFee] = useState('');
-  const [distance, setDistance] = useState('');
+  // In edit mode, seed the cart from the order's existing line items (carrying notes over).
+  const [cart, setCart] = useState<CartItem[]>(() =>
+    (order?.orderItems ?? []).map((oi) => ({
+      ...(oi.menuItem as any),
+      id: oi.menuItem?.id ?? (oi as any).menuItemId,
+      name: oi.menuItem?.name ?? oi.name,
+      price: oi.price,
+      count: oi.quantity,
+      note: oi.note ?? '',
+    })),
+  );
+  const [pickupTime, setPickupTime] = useState(order?.prepTime ?? '');
+  const [deliveryFee, setDeliveryFee] = useState(order?.deliveryFee != null ? String(order.deliveryFee) : '');
+  const [distance, setDistance] = useState((order as any)?.distance != null ? String((order as any).distance) : '');
   const [draftId, setDraftId] = useState<string | undefined>(undefined);
   const [drafts, setDrafts] = useState<OrderDraft[]>(() => getDrafts());
 
@@ -68,6 +80,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   }, [items, activeCategoryId]);
 
    const mutate =useCreateOrderMutation()
+   const updateMutate = useUpdateOrderMutation()
 
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
@@ -85,10 +98,14 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
     );
   };
 
+  // Per-line kitchen note (e.g. "острый, без лука").
+  const changeNote = (id: string, note: string) => {
+    setCart((prev) => prev.map((item) => (item.id === id ? { ...item, note } : item)));
+  };
+
   const subtotal = cart.reduce((sum, item) => sum + Number(item.price) * item.count, 0);
-  const tax = subtotal * 0.08;
   const deliveryFeeNum = Number(deliveryFee) || 0;
-  const total = subtotal + tax + deliveryFeeNum;
+  const total = subtotal + deliveryFeeNum;
 
   const handleCreatOrder =async () => {
     // assemble payload and create order
@@ -104,7 +121,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
       alert('Ընտրեք առնվազն մեկ ապրանք');
       return;
     }
-    const orderItems = cart.map((c) => ({menuItemId: c.id, quantity: c.count, price: c.price}));
+    const orderItems = cart.map((c) => ({menuItemId: c.id, quantity: c.count, price: Number(c.price), note: c.note?.trim() || undefined}));
     const deliveryAddress = `${formData.city || ''}, ${formData.street || ''}, ${formData.building || ''},`;
     const payload: any = {
       price: total,
@@ -118,6 +135,15 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
     if (branchId) payload.branchId = branchId;
     if (distance.trim() !== '') payload.distance = Number(distance) || 0;
     if (courierId) payload.courierId = courierId;
+
+    if (isEditing && order) {
+      // Edit mode: update the existing order (items replaced + price recomputed server-side).
+      await updateMutate.mutateAsync({ id: order.id, payload });
+      toast.success('Պատվերը թարմացվեց');
+      onClose();
+      return;
+    }
+
     await mutate.mutateAsync(payload);
     if (draftId) {
       deleteDraft(draftId); // order sent — drop its draft
@@ -165,7 +191,7 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
   return (
     <Page>
       <Main>
-        {drafts.length > 0 && (
+        {!isEditing && drafts.length > 0 && (
           <DraftsPanel>
             <DraftsTitle>Սևագրեր ({drafts.length})</DraftsTitle>
             <DraftsList>
@@ -278,18 +304,26 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
          <CartList>
           {cart.map((item) => (
             <CartRow key={item.id}>
-              <div style={{display: "flex", alignItems: "center", gap: '5px'}}>
-                <DishImage style={{width: "60px", margin: '10px 0'}}>
-                  {item.image ? <img src={item.image} alt={item.name}/> : null}
-                </DishImage>
-                <DishName>{item.name}</DishName>
-                <Muted>{toCurrency(Number(item.price))}</Muted>
-              </div>
-              <Counter>
-                <CounterBtn type="button" onClick={() => changeCount(item.id, -1)}>-</CounterBtn>
-                <span>{item.count}</span>
-                <CounterBtn type="button" onClick={() => changeCount(item.id, 1)}>+</CounterBtn>
-              </Counter>
+              <CartTop>
+                <div style={{display: "flex", alignItems: "center", gap: '5px'}}>
+                  <DishImage style={{width: "60px", margin: '10px 0'}}>
+                    {item.image ? <img src={item.image} alt={item.name}/> : null}
+                  </DishImage>
+                  <DishName>{item.name}</DishName>
+                  <Muted>{toCurrency(Number(item.price))}</Muted>
+                </div>
+                <Counter>
+                  <CounterBtn type="button" onClick={() => changeCount(item.id, -1)}>-</CounterBtn>
+                  <span>{item.count}</span>
+                  <CounterBtn type="button" onClick={() => changeCount(item.id, 1)}>+</CounterBtn>
+                </Counter>
+              </CartTop>
+              <NoteInput
+                value={item.note ?? ''}
+                onChange={(e) => changeNote(item.id, e.target.value)}
+                placeholder="Նշում՝ կծու, առանց սոխի..."
+                maxLength={255}
+              />
             </CartRow>
           ))}
           {cart.length === 0 && <Muted>Ընտրել ապրանք պատվիրելու համար.</Muted>}
@@ -300,8 +334,10 @@ export const CreateOrderFlow = ({onClose}:{onClose:()=>void}) => {
           <TotalRow><strong>Գումարը</strong><strong>{toCurrency(total)}</strong></TotalRow>
         </Totals>
         <FooterActions>
-          <Button type="button" variant="secondary" onClick={handleSaveDraft}>Պահպանել</Button>
-          <Button type="button" variant="ghost" onClick={handleCreatOrder}>Ուղարկել խոհանոց</Button>
+          {!isEditing && <Button type="button" variant="secondary" onClick={handleSaveDraft}>Պահպանել</Button>}
+          <Button type="button" variant="ghost" onClick={handleCreatOrder} disabled={mutate.isPending || updateMutate.isPending}>
+            {isEditing ? 'Պահպանել փոփոխությունները' : 'Ուղարկել խոհանոց'}
+          </Button>
         </FooterActions>
       </OrderPanel>
     </Page>
@@ -493,12 +529,30 @@ const CartList = styled.div`
 
 const CartRow = styled.div`
     display: grid;
-    grid-template-columns: 1fr auto;
     gap: 8px;
-    align-items: center;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 10px;
+`;
+
+const CartTop = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+`;
+
+const NoteInput = styled.input`
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #fff;
+    padding: 7px 10px;
+    font-size: 0.85rem;
+    &::placeholder { color: rgba(255, 255, 255, 0.4); }
+    &:focus { outline: none; border-color: #4f8fff; }
 `;
 
 const Counter = styled.div`

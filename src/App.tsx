@@ -4,8 +4,11 @@ import { PrivateRoutes } from './routes/PrivateRoutes';
 import { PublicRoutes } from './routes/PublicRoutes';
 import { Sidebar } from '@shared/ui/Sidebar';
 import 'react-data-grid/lib/styles.css';
-import {lazy} from "react";
+import {lazy, useEffect} from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from "./app/providers/AuthProvider";
+import { initializeSocket } from '@shared/lib/socket';
+import { LiveNotifications } from '@shared/ux/LiveNotifications';
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'));
 const OrdersPage = lazy(() => import('@pages/orders/OrdersPage'));
 const CouriersPage = lazy(() => import('@pages/couriers/CouriersPage'));
@@ -19,6 +22,7 @@ const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
 const CourierDashboard = lazy(() => import('@pages/courier/CourierDashboard'));
 const CourierSettings = lazy(() => import('@pages/courier/CourierSettings'));
 const KdsScreen = lazy(() => import('@pages/kds/KdsScreen'));
+const ManagerDashboardPage = lazy(() => import('@pages/manager/ManagerDashboardPage'));
 
 const AppShell = styled.div`
   position: relative;
@@ -47,10 +51,11 @@ const Content = styled.main`
 `;
 
 const PrivateLayout = () => {
-  // useEffect(() => {
-  //   const cleanup = initializeSocket();
-  //   return cleanup;
-  // }, []);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const cleanup = initializeSocket(queryClient);
+    return cleanup;
+  }, [queryClient]);
 
   return (
     <AppShell>
@@ -58,6 +63,7 @@ const PrivateLayout = () => {
       <Content>
         <Outlet />
       </Content>
+      <LiveNotifications />
     </AppShell>
   );
 };
@@ -65,6 +71,7 @@ const PrivateLayout = () => {
 export function App() {
   const { user } = useAuth();
   const isCourier = user?.role === 'courier';
+  const isManager = user?.role === 'manager';
 
   return (
     <Routes>
@@ -81,6 +88,12 @@ export function App() {
         <Route element={<PrivateRoutes />}>
           <Route path="/" element={<CourierDashboard />} />
           <Route path="/settings" element={<CourierSettings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      ) : isManager ? (
+        // Restaurant manager sees ONLY their sales & reports cabinet, scoped to owned restaurants.
+        <Route element={<PrivateRoutes />}>
+          <Route path="/" element={<ManagerDashboardPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       ) : (

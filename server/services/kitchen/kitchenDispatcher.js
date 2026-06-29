@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Order, Restaurant } from '../../models/index.js';
+import { Order, Restaurant, RestaurantAddress } from '../../models/index.js';
 import AppError from '../../utils/AppError.js';
 import { getIo } from '../socket.js';
 import { serializeOrderForKitchen } from './serializeOrder.js';
@@ -142,14 +142,43 @@ const acknowledge = async (orderId, status = 'accepted', scope = {}) => {
   } else if (scope.restaurantId && order.restaurantId !== scope.restaurantId) {
     throw new AppError(404, 'Order not found for this restaurant');
   }
-  order.dispatchStatus = status === 'failed' ? 'failed' : 'accepted';
-  // Kitchen pressed "Принял" — advance the business status so the CRM/operator sees it,
-  // but never downgrade an order that's already further along.
-  if (status !== 'failed' && order.status === 'pending') {
-    order.status = 'accepted';
+  if (status === 'failed') {
+    order.dispatchStatus = 'failed';
+  } else if (status === 'ready') {
+    // Kitchen pressed "Готово" — cooking is finished, the dish is ready for pickup/delivery.
+    // Advance only from the in-kitchen statuses; never downgrade an order already further along.
+    order.dispatchStatus = 'accepted';
+    if (['accepted', 'cooking'].includes(order.status)) order.status = 'ready';
+  } else {
+    // Kitchen pressed "Принял" — it started preparing, so move the order to 'cooking'
+    // (shown as "Պատրաստվում է" in the CRM). Only advance from early statuses.
+    order.dispatchStatus = 'accepted';
+    if (['pending', 'new', 'accepted'].includes(order.status)) order.status = 'cooking';
   }
   await order.save();
   notifyOperators(order);
+  // Dedicated realtime event so the CRM can pop a live "order accepted" notification —
+  // enriched with the restaurant (name + logo) and branch (name) for the card. Only the
+  // initial accept step pops it; the later "Готово" just updates the order via notifyOperators.
+  if (status !== 'failed' && status !== 'ready') {
+    try {
+      const io = getIo();
+      if (io) {
+        const [restaurant, branch] = await Promise.all([
+          Restaurant.findByPk(order.restaurantId, { attributes: ['id', 'name', 'logo', 'photo'] }),
+          order.branchId ? RestaurantAddress.findByPk(order.branchId, { attributes: ['id', 'name', 'address'] }) : null,
+        ]);
+        io.emit('order:accepted', {
+          id: order.id,
+          code: order.code,
+          customerName: order.customerName,
+          status: order.status,
+          restaurant: restaurant ? { id: restaurant.id, name: restaurant.name, logo: restaurant.logo || restaurant.photo } : null,
+          branch: branch ? { id: branch.id, name: branch.name, address: branch.address } : null,
+        });
+      }
+    } catch { /* realtime is best-effort */ }
+  }
   return order;
 };
 

@@ -61,40 +61,50 @@ const orderLinkExtras = (orderId) => {
   };
 };
 
+// Status tabs shown in the CRM orders toolbar. 'all' = no status filter, 'new' = orders
+// not yet assigned to a courier; the rest map straight to the order status column.
+const ORDER_TAB_KEYS = ['all', 'new', 'cooking', 'ready', 'delivering', 'done'];
+
+// Build the Sequelize WHERE for an orders query. Shared by listOrders and getStatusCounts
+// so the per-tab counters always match what selecting that tab actually returns.
+const buildOrderWhere = ({ status, search, courierId, restaurantId, dateFrom, dateTo } = {}, auth = null) => {
+  const where = {};
+  // Calendar range filter on createdAt (exact ISO instants from the DateRangePicker).
+  if (dateFrom || dateTo) {
+    where.createdAt = {};
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
+    if (from && !Number.isNaN(from.getTime())) where.createdAt[Op.gte] = from;
+    if (to && !Number.isNaN(to.getTime())) where.createdAt[Op.lte] = to;
+  }
+  if (status && status !== 'all') {
+    if (status === 'new') where.courierId = { [Op.is]: null };
+    else where.status = status;
+  }
+  if (courierId) where.courierId = courierId;
+  if (restaurantId) where.restaurantId = restaurantId;
+  if (search) {
+    where[Op.or] = [
+      { code: { [Op.like]: `%${search}%` } },
+      { customerName: { [Op.like]: `%${search}%` } },
+      { customerPhone: { [Op.like]: `%${search}%` } },
+      { deliveryAddress: { [Op.like]: `%${search}%` } },
+      { courierName: { [Op.like]: `%${search}%` } },
+    ];
+  }
+  // A logged-in courier may ONLY ever see their own orders — enforce server-side last,
+  // overriding any client-supplied courierId (and the unassigned 'new' filter above).
+  if (auth?.role === 'courier') where.courierId = auth.userId;
+  return where;
+};
+
 class OrderService {
-  static async listOrders(query = {}) {
+  static async listOrders(query = {}, auth = null) {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC', status, search, courierId, restaurantId, dateFrom, dateTo } = query;
 
     const safeSortBy = ORDER_SORTABLE_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
     const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    const where = {};
-    // Calendar range filter on createdAt. The client (DateRangePicker) sends exact
-    // ISO instants for the start/end of the chosen range — parse them directly.
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      const from = dateFrom ? new Date(dateFrom) : null;
-      const to = dateTo ? new Date(dateTo) : null;
-      if (from && !Number.isNaN(from.getTime())) where.createdAt[Op.gte] = from;
-      if (to && !Number.isNaN(to.getTime())) where.createdAt[Op.lte] = to;
-    }
-    if (status && status !== 'all') {
-      if (status === 'new') {
-        where.courierId = { [Op.is]: null };
-      } else {
-        where.status = status;
-      }
-    }
-    if (courierId) where.courierId = courierId;
-    if (restaurantId) where.restaurantId = restaurantId;
-    if (search) {
-      where[Op.or] = [
-        { code: { [Op.like]: `%${search}%` } },
-        { customerName: { [Op.like]: `%${search}%` } },
-        { customerPhone: { [Op.like]: `%${search}%` } },
-        { deliveryAddress: { [Op.like]: `%${search}%` } },
-        { courierName: { [Op.like]: `%${search}%` } },
-      ];
-    }
+    const where = buildOrderWhere({ status, search, courierId, restaurantId, dateFrom, dateTo }, auth);
     const offset = (Number(page) - 1) * Number(limit);
 
     const { count, rows } = await Order.findAndCountAll({
@@ -117,9 +127,13 @@ class OrderService {
     };
   }
 
-  static async getOrder(id) {
+  static async getOrder(id, auth = null) {
     const order = await Order.findByPk(id, { include: ORDER_INCLUDE });
     if (!order) throw new AppError(404, 'Order not found');
+    // Couriers may only read their own orders — hide others as if they don't exist.
+    if (auth?.role === 'courier' && order.courierId !== auth.userId) {
+      throw new AppError(404, 'Order not found');
+    }
     return order;
   }
 
@@ -130,6 +144,21 @@ class OrderService {
       Order.count(),
     ]);
     return { active, completed, total };
+  }
+
+  /**
+   * Order count per toolbar status tab, honoring the active search/date/courier filters
+   * (but NOT the selected tab) so each badge shows how many orders that tab would return.
+   */
+  static async getStatusCounts(query = {}, auth = null) {
+    const base = { search: query.search, courierId: query.courierId, restaurantId: query.restaurantId, dateFrom: query.dateFrom, dateTo: query.dateTo };
+    const entries = await Promise.all(
+      ORDER_TAB_KEYS.map(async (key) => {
+        const where = buildOrderWhere({ ...base, status: key }, auth);
+        return [key, await Order.count({ where })];
+      }),
+    );
+    return Object.fromEntries(entries);
   }
 
   static async createOrder(payload, authUser) {
@@ -216,6 +245,7 @@ class OrderService {
             menuItemId: i.menuItemId,
             quantity: i.quantity ?? 1,
             price: i.price ?? 0,
+            note: i.note ?? null,
           }));
         if (itemsToCreate.length) {
           await OrderItem.bulkCreate(itemsToCreate, { transaction });
@@ -401,24 +431,49 @@ class OrderService {
   // General edit of an order's editable fields (the RUD drawer). Only the keys present in
   // the payload are changed.
   static async updateOrder(orderId, payload) {
-    const order = await Order.findByPk(orderId);
-    if (!order) throw new AppError(404, 'Order not found');
-    const editable = [
-      'customerName', 'customerPhone', 'deliveryAddress', 'entrance', 'floor', 'domofon',
-      'apartment', 'addressComment', 'prepTime', 'orderType', 'payMethod', 'status',
-      'city', 'street', 'building',
-    ];
-    for (const key of editable) {
-      if (payload[key] !== undefined) order[key] = payload[key];
-    }
-    if (payload.deliveryFee !== undefined) order.deliveryFee = Number(payload.deliveryFee) || 0;
-    if (payload.distance !== undefined) order.distance = payload.distance === '' || payload.distance == null ? null : Number(payload.distance);
-    await order.save();
+    await sequelize.transaction(async (transaction) => {
+      const order = await Order.findByPk(orderId, { transaction });
+      if (!order) throw new AppError(404, 'Order not found');
+      const editable = [
+        'customerName', 'customerPhone', 'deliveryAddress', 'entrance', 'floor', 'domofon',
+        'apartment', 'addressComment', 'prepTime', 'orderType', 'payMethod', 'status',
+        'city', 'street', 'building',
+      ];
+      for (const key of editable) {
+        if (payload[key] !== undefined) order[key] = payload[key];
+      }
+      if (payload.deliveryFee !== undefined) order.deliveryFee = Number(payload.deliveryFee) || 0;
+      if (payload.distance !== undefined) order.distance = payload.distance === '' || payload.distance == null ? null : Number(payload.distance);
+      if (payload.branchId !== undefined) order.branchId = payload.branchId || null;
+      if (payload.courierId !== undefined) order.courierId = payload.courierId || null;
+
+      // Replace the whole line-item set when provided, and recompute the order price
+      // (items total + delivery fee). Items must belong to the order's restaurant.
+      if (Array.isArray(payload.orderItems)) {
+        for (const oi of payload.orderItems) {
+          const item = await MenuItem.findByPk(oi.menuItemId, { include: { model: Menu, as: 'menu' }, transaction });
+          if (!item || item?.menu?.restaurantId !== order.restaurantId) {
+            throw new AppError(400, 'One or more menu items do not belong to the order restaurant');
+          }
+        }
+        await OrderItem.destroy({ where: { orderId }, transaction });
+        const itemsToCreate = payload.orderItems
+          .filter((i) => !!i.menuItemId)
+          .map((i) => ({ orderId, menuItemId: i.menuItemId, quantity: i.quantity ?? 1, price: i.price ?? 0, note: i.note ?? null }));
+        if (itemsToCreate.length) await OrderItem.bulkCreate(itemsToCreate, { transaction });
+        const itemsTotal = itemsToCreate.reduce((s, it) => s + (Number(it.price) || 0) * (it.quantity || 1), 0);
+        order.price = itemsTotal + (Number(order.deliveryFee ?? 0) || 0);
+      }
+
+      await order.save({ transaction });
+    });
+
+    const fresh = await OrderService.getOrder(orderId);
     try {
       const io = getIo();
-      if (io) io.emit('order:update', order);
+      if (io) io.emit('order:update', fresh);
     } catch {}
-    return OrderService.getOrder(orderId);
+    return fresh;
   }
 
   static async deleteOrder(orderId) {

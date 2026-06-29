@@ -51,19 +51,6 @@ export interface query {
   dateTo?:string
 }
 
-export const useOrdersQuery = (query:query) =>{
-
- return useQuery<Order[]>({
-    queryKey: ['orders',query],
-    queryFn: async () => {
-      const res = await api.get<{ data: Order[] }>('/orders', {
-        params: query,
-      });
-      return res.data.data;
-    },
-  });
-}
-
 export interface OrdersMeta {
   total: number;
   page: number;
@@ -93,6 +80,18 @@ export const useOrderQuery = (id?: string) =>
       const res = await api.get<{ data: Order }>(`/orders/${id}`);
       return res.data.data;
     },
+  });
+
+// Per-status-tab order counts for the CRM toolbar badges. Honors the same search/date
+// filters as the list so each badge matches what selecting that tab returns.
+export const useOrderStatusCountsQuery = (query: Omit<query, 'status' | 'page' | 'limit'> = {}) =>
+  useQuery<Record<string, number>>({
+    queryKey: ['orders-status-counts', query],
+    queryFn: async () => {
+      const res = await api.get<{ data: Record<string, number> }>('/orders/status-counts', { params: query });
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
   });
 
 export const useOrdersStatsQuery = () =>
@@ -180,29 +179,6 @@ export const useCourierQuery = (id: string) => {
   });
 };
 
-// Menus for a specific restaurant
-export const useRestaurantMenusQuery = (restaurantId: string | null) => {
-  return useQuery<Restaurant[]>({
-    queryKey: restaurantId ? ['menus', restaurantId] : ['menus', 'all'],
-    queryFn: async () => {
-      if (!restaurantId) return [];
-      const res = await api.get<any[]>(`/restaurants/${restaurantId}/menus`);
-      return res.data;
-    },
-  });
-};
-
-export const useMenuItemsQuery = (menuId: string | null) => {
-  return useQuery<any[]>({
-    queryKey: menuId ? ['menuItems', menuId] : ['menuItems', 'all'],
-    queryFn: async () => {
-      if (!menuId) return [];
-      const res = await api.get<any[]>(`/menus/${menuId}/items`);
-      return res.data;
-    },
-  });
-};
-
 // Courier-specific data hooks
 export const useGetMe = () => {
   return useQuery<{ data: Courier }>({
@@ -238,6 +214,7 @@ export const useCreateOrderMutation = () => {
       toast.success('Պատվերը ստեղծվեց');
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
       await queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };
@@ -248,7 +225,12 @@ export const useUpdateOrderMutation = () => {
     mutationKey: ['update-order'],
     mutationFn: async ({ id, payload }: { id: string; payload: any }) => ordersApi.updateOrder(id, payload),
     onSuccess: async () => {
+      // The orders table is backed by the paginated query — invalidate it too, otherwise
+      // an edit saves on the server but the visible list keeps showing stale rows.
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['order'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };
@@ -305,6 +287,7 @@ export const useUpdateCourierMutation = (successCb:()=>void) => {
     onSuccess: async () => {
       successCb()
       await queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };
@@ -333,6 +316,7 @@ export const useUpdateOrderCourierStatusMutation = () => {
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
       await queryClient.invalidateQueries({ queryKey: ['order'] });
       await queryClient.invalidateQueries({ queryKey: ['courier'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };
@@ -346,6 +330,7 @@ export const useUpdateOrderPayMethodMutation = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };
@@ -359,6 +344,7 @@ export const useUpdateOrderTypeMutation = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };
@@ -371,6 +357,7 @@ export const useDeleteOrderMutation = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-status-counts'] });
     },
   });
 };

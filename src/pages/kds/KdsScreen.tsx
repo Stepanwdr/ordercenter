@@ -1,42 +1,83 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { acceptOrder, useOrderStream, type KdsOrder } from '@features/kds/useOrderStream';
+import { acceptOrder, readyOrder, fetchScopeInfo, useOrderStream, type KdsOrder, type KdsScopeInfo, type KdsScopeKind } from '@features/kds/useOrderStream';
+import { playSound } from '@shared/lib/sound';
 
-const LS_RID = 'kds_restaurant_id';
+const LS_RID = 'kds_restaurant_id'; // stores the scope id (restaurant OR branch id)
 const LS_TOKEN = 'kds_device_token';
+const LS_SCOPE = 'kds_scope_kind';
+
+const API_IMG_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:5000';
+const resolveImg = (u?: string | null) =>
+  !u ? '' : u.startsWith('http') || u.startsWith('//') ? u : `${API_IMG_BASE}${u}`;
+
+// New-order sound for the kitchen. Drop a file at public/sounds/new-order.mp3 or set
+// VITE_KDS_SOUND. Falls back to a 3-tone chime.
+const KDS_SOUND = (import.meta.env.VITE_KDS_SOUND as string | undefined) ?? '/sounds/new-order.mp3';
 
 export default function KdsScreen() {
-  const [restaurantId, setRestaurantId] = useState(() => localStorage.getItem(LS_RID) || '');
+  const [scopeId, setScopeId] = useState(() => localStorage.getItem(LS_RID) || '');
   const [token, setToken] = useState(() => localStorage.getItem(LS_TOKEN) || '');
+  const [scopeKind, setScopeKind] = useState<KdsScopeKind>(
+    () => (localStorage.getItem(LS_SCOPE) as KdsScopeKind) || 'restaurants',
+  );
   const [configured, setConfigured] = useState(() => !!localStorage.getItem(LS_RID));
 
   if (!configured) {
     return (
       <Setup
-        restaurantId={restaurantId}
+        scopeKind={scopeKind}
+        scopeId={scopeId}
         token={token}
-        onChange={(rid, t) => { setRestaurantId(rid); setToken(t); }}
+        onScopeKind={setScopeKind}
+        onChange={(id, t) => { setScopeId(id); setToken(t); }}
         onSave={() => {
-          localStorage.setItem(LS_RID, restaurantId.trim());
+          localStorage.setItem(LS_RID, scopeId.trim());
           localStorage.setItem(LS_TOKEN, token.trim());
+          localStorage.setItem(LS_SCOPE, scopeKind);
           setConfigured(true);
         }}
       />
     );
   }
 
-  return <Board restaurantId={restaurantId} token={token} onReconfigure={() => setConfigured(false)} />;
+  return <Board scopeKind={scopeKind} scopeId={scopeId} token={token} onReconfigure={() => setConfigured(false)} />;
 }
 
-function Board({ restaurantId, token, onReconfigure }: { restaurantId: string; token: string; onReconfigure: () => void }) {
-  const { orders, conn, removeOrder } = useOrderStream(restaurantId, token);
+function Board({ scopeKind, scopeId, token, onReconfigure }: { scopeKind: KdsScopeKind; scopeId: string; token: string; onReconfigure: () => void }) {
+  const { orders, conn, removeOrder } = useOrderStream(scopeKind, scopeId, token, () => playSound(KDS_SOUND, [660, 990, 1320]));
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [cooking, setCooking] = useState<Record<string, boolean>>({});
+  const [info, setInfo] = useState<KdsScopeInfo | null>(null);
 
+  useEffect(() => {
+    let alive = true;
+    fetchScopeInfo(scopeKind, scopeId, token)
+      .then((i) => { if (alive) setInfo(i); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [scopeKind, scopeId, token]);
+
+  // "Принял": kitchen started cooking. Keep the card on the board (so the composition stays
+  // visible while preparing) and flip its button to "Готово".
   const accept = async (order: KdsOrder) => {
     setBusy((b) => ({ ...b, [order.id]: true }));
     try {
-      await acceptOrder(restaurantId, order.id, token);
-      removeOrder(order.id); // accepted — drop from the board
+      await acceptOrder(scopeKind, scopeId, order.id, token);
+      setCooking((c) => ({ ...c, [order.id]: true }));
+    } catch {
+      /* keep the card as-is so staff can retry */
+    } finally {
+      setBusy((b) => ({ ...b, [order.id]: false }));
+    }
+  };
+
+  // "Готово": cooking finished → order goes to 'ready' and leaves the kitchen board.
+  const markReady = async (order: KdsOrder) => {
+    setBusy((b) => ({ ...b, [order.id]: true }));
+    try {
+      await readyOrder(scopeKind, scopeId, order.id, token);
+      removeOrder(order.id);
     } catch {
       setBusy((b) => ({ ...b, [order.id]: false }));
     }
@@ -45,7 +86,21 @@ function Board({ restaurantId, token, onReconfigure }: { restaurantId: string; t
   return (
     <Page>
       <TopBar>
-        <Title>Կухня · Заказы</Title>
+        <Brand>
+          {info?.logo ? (
+            <BrandLogo src={resolveImg(info.logo)} alt={info.restaurantName || info.name || ''} />
+          ) : (
+            <BrandLogoFallback>🍽️</BrandLogoFallback>
+          )}
+          <BrandText>
+            <Title>{info?.restaurantName || info?.name || 'Խոհանոց'}</Title>
+            {info && (info.name !== info.restaurantName || info.address) && (
+              <BrandSub>
+                {info.name}{info.address ? ` · ${info.address}` : ''}
+              </BrandSub>
+            )}
+          </BrandText>
+        </Brand>
         <Right>
           <Conn $state={conn}>
             <Dot $state={conn} />
@@ -76,6 +131,7 @@ function Board({ restaurantId, token, onReconfigure }: { restaurantId: string; t
                 {o.items.map((it) => (
                   <li key={it.id}>
                     <Qty>{it.quantity}×</Qty> {it.name}
+                    {it.note ? <Note>📝 {it.note}</Note> : null}
                     {(it.modifiers || []).map((m, i) => (
                       <Mod key={i}>+ {typeof m === 'string' ? m : m?.name}</Mod>
                     ))}
@@ -84,10 +140,15 @@ function Board({ restaurantId, token, onReconfigure }: { restaurantId: string; t
               </Items>
 
               <CardFoot>
-                <Total>{Number(o.total).toFixed(2)}</Total>
-                <AcceptBtn disabled={!!busy[o.id]} onClick={() => accept(o)}>
-                  {busy[o.id] ? '…' : 'Принял'}
-                </AcceptBtn>
+                {cooking[o.id] || o.status === 'cooking' || o.status === 'ready' ? (
+                  <ReadyBtn style={{ width: '100%' }} disabled={!!busy[o.id]} onClick={() => markReady(o)}>
+                    {busy[o.id] ? '…' : 'Готово'}
+                  </ReadyBtn>
+                ) : (
+                  <AcceptBtn style={{ width: '100%' }} disabled={!!busy[o.id]} onClick={() => accept(o)}>
+                    {busy[o.id] ? '…' : 'Принял'}
+                  </AcceptBtn>
+                )}
               </CardFoot>
             </Card>
           ))}
@@ -98,29 +159,56 @@ function Board({ restaurantId, token, onReconfigure }: { restaurantId: string; t
 }
 
 function Setup({
-  restaurantId, token, onChange, onSave,
+  scopeKind, scopeId, token, onScopeKind, onChange, onSave,
 }: {
-  restaurantId: string; token: string; onChange: (rid: string, t: string) => void; onSave: () => void;
+  scopeKind: KdsScopeKind;
+  scopeId: string;
+  token: string;
+  onScopeKind: (k: KdsScopeKind) => void;
+  onChange: (id: string, t: string) => void;
+  onSave: () => void;
 }) {
   return (
     <Page>
       <SetupCard>
         <Title style={{ marginBottom: 16 }}>Настройка KDS</Title>
         <Field>
-          Restaurant ID
-          <input value={restaurantId} onChange={(e) => onChange(e.target.value, token)} placeholder="UUID ресторана" />
+          Тип точки
+          <ScopeToggle>
+            <ScopeBtn type="button" $active={scopeKind === 'branches'} onClick={() => onScopeKind('branches')}>Филиал</ScopeBtn>
+            <ScopeBtn type="button" $active={scopeKind === 'restaurants'} onClick={() => onScopeKind('restaurants')}>Ресторан</ScopeBtn>
+          </ScopeToggle>
+        </Field>
+        <Field>
+          {scopeKind === 'branches' ? 'Branch ID (филиал)' : 'Restaurant ID'}
+          <input value={scopeId} onChange={(e) => onChange(e.target.value, token)} placeholder={scopeKind === 'branches' ? 'UUID филиала' : 'UUID ресторана'} />
         </Field>
         <Field>
           Device token
-          <input value={token} onChange={(e) => onChange(restaurantId, e.target.value)} placeholder="channelConfig.deviceToken" />
+          <input value={token} onChange={(e) => onChange(scopeId, e.target.value)} placeholder="channelConfig.deviceToken" />
         </Field>
-        <AcceptBtn disabled={!restaurantId.trim()} onClick={onSave} style={{ width: '100%', marginTop: 8 }}>
+        <AcceptBtn disabled={!scopeId.trim()} onClick={onSave} style={{ width: '100%', marginTop: 8 }}>
           Подключиться
         </AcceptBtn>
       </SetupCard>
     </Page>
   );
 }
+
+const ScopeToggle = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+const ScopeBtn = styled.button<{ $active?: boolean }>`
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid ${({ $active }) => ($active ? '#4f8fff' : 'rgba(255,255,255,0.15)')};
+  background: ${({ $active }) => ($active ? 'rgba(79,143,255,0.18)' : 'rgba(255,255,255,0.04)')};
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+`;
 
 /* ---------- styles ---------- */
 const Page = styled.div`
@@ -134,7 +222,21 @@ const TopBar = styled.div`
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 16px;
 `;
-const Title = styled.h1` margin: 0; font-size: 22px; `;
+const Title = styled.h1` margin: 0; font-size: 22px; line-height: 1.1; `;
+const Brand = styled.div` display: flex; align-items: center; gap: 12px; min-width: 0; `;
+const BrandLogo = styled.img`
+  width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
+`;
+const BrandLogoFallback = styled.div`
+  width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
+`;
+const BrandText = styled.div` display: flex; flex-direction: column; gap: 2px; min-width: 0; `;
+const BrandSub = styled.span`
+  font-size: 13px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+`;
 const Right = styled.div` display: flex; align-items: center; gap: 12px; `;
 const Conn = styled.div<{ $state: string }>`
   display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600;
@@ -166,9 +268,11 @@ const Items = styled.ul`
 `;
 const Qty = styled.span` color: #4f8fff; font-weight: 800; `;
 const Mod = styled.span` display: block; font-size: 13px; opacity: 0.6; padding-left: 22px; `;
+const Note = styled.span` display: block; font-size: 14px; color: #f59e0b; padding-left: 22px; font-weight: 600; `;
 const CardFoot = styled.div`
   display: flex; align-items: center; justify-content: space-between;
   margin-top: auto; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);
+  width: 100%;
 `;
 const Total = styled.span` font-weight: 800; font-size: 16px; `;
 const AcceptBtn = styled.button`
@@ -176,6 +280,9 @@ const AcceptBtn = styled.button`
   background: #34d399; color: #06281d; font-weight: 800; font-size: 15px;
   &:disabled { opacity: 0.5; cursor: default; }
   &:active { opacity: 0.85; }
+`;
+const ReadyBtn = styled(AcceptBtn)`
+  background: #4f8fff; color: #04122e;
 `;
 const Empty = styled.div` text-align: center; opacity: 0.45; padding: 80px 0; font-size: 18px; `;
 const SetupCard = styled.div`

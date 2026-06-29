@@ -14,6 +14,9 @@ interface DateRangePickerProps {
   /** BCP-47 locale for month / weekday names (defaults to en-GB). */
   locale?: string
   labels?: { placeholder?: string; clear?: string; apply?: string }
+  /** Which edge of the trigger the (wide) calendar anchors to. Use 'right' near the
+   *  right edge of the screen so the two-month panel doesn't overflow off-screen. */
+  align?: 'left' | 'right'
 }
 
 // ── date helpers (dependency-free) ────────────────────────────────
@@ -62,9 +65,11 @@ const Trigger = styled.button<{ $active: boolean }>`
 `
 const Placeholder = styled.span`color: rgba(255,255,255,0.45); font-weight: 400;`
 
-const Pop = styled.div`
-  position: absolute; top: 44px; left: 0; z-index: 41;
+const Pop = styled.div<{ $align: 'left' | 'right' }>`
+  position: absolute; top: 44px; z-index: 41;
+  ${(p) => (p.$align === 'right' ? css`right: 0; left: auto;` : css`left: 0; right: auto;`)}
   width: 552px;
+  max-width: calc(100vw - 32px);
   background: #141824;
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 14px;
@@ -158,7 +163,7 @@ const FooterBtn = styled.button<{ $primary?: boolean }>`
     : css`background: transparent; color: rgba(255,255,255,0.72); &:hover { background: rgba(255,255,255,0.08); color: #f3f4f6; }`}
 `
 
-export function DateRangePicker({ value, onChange, locale = 'en-GB', labels }: DateRangePickerProps) {
+export function DateRangePicker({ value, onChange, locale = 'en-GB', labels, align = 'left' }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
   const wrapRef = useOutsideClick<HTMLDivElement>(() => setOpen(false), open)
   const [leftView, setLeftView] = useState<Date>(() => startOfDay(value.start ?? new Date()))
@@ -295,7 +300,7 @@ export function DateRangePicker({ value, onChange, locale = 'en-GB', labels }: D
       </Trigger>
 
       {open && (
-        <Pop className="fade-in" onMouseLeave={() => setHover(null)}>
+        <Pop className="fade-in" $align={align} onMouseLeave={() => setHover(null)}>
             <Head>
               <NavBtn style={{display:"flex"}} type="button" title="Previous year" onClick={() => setLeftView((v) => addMonths(v, -12))}>
                 <Icon name="chevronLeft" size={14} style={{ marginRight: -6 }} />

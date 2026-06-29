@@ -14,6 +14,7 @@ import { useOutsideClick } from '@shared/lib/useOutsideClick';
 import {
   useCouriersQuery,
   useOrdersPaginatedQuery,
+  useOrderStatusCountsQuery,
   useAssignCourierMutation,
   useUpdateOrderCourierStatusMutation,
   useUpdateOrderStatusMutation,
@@ -141,6 +142,7 @@ const OrdersPage = () => {
   const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [isOpenCouriersDialog,setOpenCouriersDialog]=useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [search, setSearch] = useState('');
   const [courierId, setCourierId] = useState('');
   const [activeStatus, setActiveStatus] = useState<(typeof statuses)[number]>('all');
@@ -170,6 +172,15 @@ const OrdersPage = () => {
     sortBy: sort?.columnKey,
     sortOrder: sort?.direction,
   });
+  // Per-tab order counts for the toolbar badges (same filters, minus the selected tab).
+  const statusCountsQuery = useOrderStatusCountsQuery({
+    courierId,
+    search: debouncedSearch,
+    dateFrom,
+    dateTo,
+  });
+  const statusCounts = statusCountsQuery.data ?? {};
+
   const orders = ordersQuery.data?.data ?? [];
   const ordersMeta = ordersQuery.data?.meta;
   const totalCount = ordersMeta?.total ?? 0;
@@ -276,7 +287,7 @@ const OrdersPage = () => {
       },
       { key: 'restaurant', name: 'Ռեստորան', resizable: true, draggable: true,  sortable: true,
         renderCell: ({ row }: { row: Order }) => {
-          return row?.restaurant?.name;
+          return `${row?.restaurant?.name} ${row?.branch?.address ? `-${row?.branch?.address}` : ''}`;
         },
       },
       { key: 'branch', name: 'Մասնաճյուղ', resizable: true, draggable: true,
@@ -297,10 +308,11 @@ const OrdersPage = () => {
       { key: 'orderItems', name: 'Պատվեր', resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
           const items = row.orderItems;
+          const color = ORDER_STATUS_COLOR[row.status] ?? '#4f8fff';
           return (
             <ItemChips>
               {items.map((item) => (
-                <ItemChip key={item?.id}>
+                <ItemChip key={item?.id} $color={color}>
                   {item?.quantity}h - {item?.menuItem?.name}
                 </ItemChip>
               ))}
@@ -474,7 +486,7 @@ const OrdersPage = () => {
         <div>
           <Title>Պատվերներ</Title>
         </div>
-        <Button onClick={() => setCreateOpen(true)} variant="primary">
+        <Button onClick={() => { setEditOrder(null); setCreateOpen(true); }} variant="primary">
           Ստեղծել պատվեր
         </Button>
       </Header>
@@ -499,10 +511,14 @@ const OrdersPage = () => {
           <StatusTab
             key={status}
             active={activeStatus === status}
+            $color={ORDER_STATUS_COLOR[status] ?? '#4f8fff'}
             type="button"
             onClick={() => setActiveStatus(status)}
           >
             {statusLabels[status]}
+            {typeof statusCounts[status] === 'number' && (
+              <TabCount active={activeStatus === status}>{statusCounts[status]}</TabCount>
+            )}
           </StatusTab>
         ))}
         <ControlsRow>
@@ -551,6 +567,12 @@ const OrdersPage = () => {
                 <CourierMeta>
                   {courier.user?.phone && <div>📞 {courier.user.phone}</div>}
                   {courier.restaurant?.name && <div>🏪 {courier.restaurant.name}</div>}
+                  {courier.lastDelivery?.address && (
+                    <LastDelivery $current={!!courier.lastDelivery.current} title={courier.lastDelivery.address}>
+                      {courier.lastDelivery.current ? '📍 ' : '🏁 '}{courier.lastDelivery.address}
+                      {courier.lastDelivery.at ? ` · ${new Date(courier.lastDelivery.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </LastDelivery>
+                  )}
                 </CourierMeta>
               </CourierCard>
             );
@@ -558,8 +580,8 @@ const OrdersPage = () => {
         </CouriersAside>
       </ContentRow>
 
-      <Drawer open={isCreateOpen} position="bottom" title="Ստեղծել նոր պատվեր" onClose={() => setCreateOpen(false)}>
-        <CreateOrderFlow onClose={()=>setCreateOpen(false)}/>
+      <Drawer open={isCreateOpen} position="bottom" title={editOrder ? `Փոխել պատվերը #${editOrder.code}` : 'Ստեղծել նոր պատվեր'} onClose={() => { setCreateOpen(false); setEditOrder(null); }}>
+        <CreateOrderFlow key={editOrder?.id ?? 'new'} order={editOrder} onClose={()=>{ setCreateOpen(false); setEditOrder(null); }}/>
       </Drawer>
       <Drawer open={Boolean(selectedOrder)} position="bottom" title="Առաքիչների ցանկ" onClose={() => setSelectedOrder(null)}>
         <CouriersPage selectedOrder={selectedOrder} handleCourierAsignToOrder={handleCourierAsignToOrder} />
@@ -568,7 +590,7 @@ const OrdersPage = () => {
         {courierDetailsId && <CourierPage id={courierDetailsId} onClose={() => setCourierDetailsId(null)} />}
       </Drawer>
       <Drawer open={Boolean(rudOrder)} position="right" title={rudOrder ? `Պատվեր #${rudOrder.code}` : 'Պատվեր'} onClose={() => setRudOrder(null)}>
-        {rudOrder && <OrderRudDrawer order={rudOrder} onClose={() => setRudOrder(null)} />}
+        {rudOrder && <OrderRudDrawer order={rudOrder} onClose={() => setRudOrder(null)} onEdit={(o) => { setRudOrder(null); setEditOrder(o); setCreateOpen(true); }} />}
       </Drawer>
     </div>
   );
@@ -614,19 +636,37 @@ const StatusTabs = styled.div`
     flex-wrap: wrap;
 `;
 
-const StatusTab = styled.button<{ active?: boolean }>`
-    border: none;
+const StatusTab = styled.button<{ active?: boolean; $color?: string }>`
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid ${({ active, $color }) => (active ? 'transparent' : `${$color || '#4f8fff'}3d`)};
     border-radius: 999px;
     padding: 10px 18px;
-    background: ${({ active }) => (active ? 'rgba(79, 143, 255, 0.95)' : 'rgba(255, 255, 255, 0.06)')};
-    color: ${({ active }) => (active ? '#fff' : 'rgba(255, 255, 255, 0.78)')};
+    background: ${({ active, $color }) => (active ? ($color || '#4f8fff') : `${$color || '#4f8fff'}1f`)};
+    color: ${({ active }) => (active ? '#fff' : 'rgba(255, 255, 255, 0.85)')};
     font-weight: 700;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: background 150ms ease, border-color 150ms ease;
 
     &:hover {
-        background: rgba(255, 255, 255, 0.1);
+        background: ${({ active, $color }) => (active ? ($color || '#4f8fff') : `${$color || '#4f8fff'}33`)};
     }
+`;
+
+const TabCount = styled.span<{ active?: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1;
+    background: ${({ active }) => (active ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.12)')};
+    color: ${({ active }) => (active ? '#fff' : 'rgba(255, 255, 255, 0.9)')};
 `;
 
 const ControlsRow = styled.div`
@@ -718,6 +758,15 @@ const CourierMeta = styled.div`
     line-height: 1.5;
 `;
 
+const LastDelivery = styled.div<{ $current?: boolean }>`
+    margin-top: 2px;
+    color: ${({ $current }) => ($current ? 'rgba(79, 143, 255, 0.95)' : 'rgba(52, 211, 153, 0.85)')};
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+`;
+
 const LoadRow = styled.div`
     display: flex;
     align-items: baseline;
@@ -769,14 +818,22 @@ const ItemChips = styled.div`
     padding: 4px 0;
 `;
 
-const ItemChip = styled.span`
+// Order-status palette for the item chips (8-digit hex = base color + alpha for the
+// translucent fill/border). Falls back to the original blue for unknown statuses.
+const ORDER_STATUS_COLOR: Record<string, string> = {
+  new: '#9ca3ff', pending: '#9ca3ff', accepted: '#38bdf8', cooking: '#f59e0b',
+  ready: '#38bdf8', delivering: '#9d7cff', enRoute: '#9d7cff',
+  done: '#34d399', completed: '#34d399', cancelled: '#ef4444',
+};
+
+const ItemChip = styled.span<{ $color?: string }>`
     display: inline-flex;
     align-items: center;
     min-height: 28px;
     padding: 4px 10px;
     border-radius: 999px;
-    background: rgba(79, 143, 255, 0.12);
-    border: 1px solid rgba(79, 143, 255, 0.24);
+    background: ${({ $color }) => `${$color || '#4f8fff'}1f`};
+    border: 1px solid ${({ $color }) => `${$color || '#4f8fff'}3d`};
     color: rgba(255, 255, 255, 0.92);
     font-size: 0.85rem;
     line-height: 1.2;

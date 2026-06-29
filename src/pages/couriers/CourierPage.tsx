@@ -292,14 +292,21 @@ export default function CourierPage({ id: propId, onClose }: { id?: string; onCl
                 <div>💰 ${order.price?.toFixed(2)}</div>
               </OrderMeta>
               <Actions>
-                {['cooking', 'ready', 'delivering', 'done'].map((s) => (
-                  <Button key={s} variant="secondary" style={{ fontSize: 12, padding: '6px 12px', minHeight: 0 }}
-                    onClick={() => handleStatusUpdate(order.id, s)}
-                    disabled={!['pending', 'accepted', 'cooking', 'ready', 'delivering'].includes(order.status)}
-                  >
-                    {statusLabels[s] || s}
-                  </Button>
-                ))}
+                {['cooking', 'ready', 'delivering', 'done'].map((s) => {
+                  const isActive = order.status === s; // current status → highlighted button
+                  return (
+                    <Button key={s} variant={isActive ? 'primary' : 'secondary'}
+                      style={{
+                        fontSize: 12, padding: '6px 12px', minHeight: 0,
+                        ...(isActive ? { background: ORDER_STATUS_COLOR[s] ?? '#5d7bff', color: '#fff' } : {}),
+                      }}
+                      onClick={() => handleStatusUpdate(order.id, s)}
+                      disabled={!['pending', 'accepted', 'cooking', 'ready', 'delivering'].includes(order.status)}
+                    >
+                      {statusLabels[s] || s}
+                    </Button>
+                  );
+                })}
               </Actions>
             </OrderCard>
           ))}

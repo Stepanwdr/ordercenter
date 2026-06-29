@@ -7,6 +7,7 @@ export interface KdsOrderItem {
   name: string | null;
   quantity: number;
   price: number;
+  note?: string | null;
   modifiers?: (string | { name: string })[];
 }
 
@@ -23,6 +24,16 @@ export interface KdsOrder {
   total: number;
 }
 
+/** Identity of the kitchen's scope, shown in the KDS header (restaurant brand + branch). */
+export interface KdsScopeInfo {
+  scopeKind: KdsScopeKind;
+  id: string;
+  name: string;
+  address?: string | null;
+  restaurantName?: string | null;
+  logo?: string | null;
+}
+
 type ConnState = 'connecting' | 'online' | 'offline';
 
 /**
@@ -31,36 +42,51 @@ type ConnState = 'connecting' | 'online' | 'offline';
  * - connection indicator + automatic reconnect (incl. after fatal close)
  * - heartbeats (`: ping` comment lines) are ignored natively by EventSource
  */
-export function useOrderStream(restaurantId?: string, token?: string) {
+export type KdsScopeKind = 'restaurants' | 'branches';
+
+export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: string, token?: string, onNewOrder?: () => void) {
   const [orders, setOrders] = useState<KdsOrder[]>([]);
   const [conn, setConn] = useState<ConnState>('connecting');
   const esRef = useRef<EventSource | null>(null);
   const retryRef = useRef<number | null>(null);
   const attemptsRef = useRef(0);
+  // Keep the callback in a ref so it never re-subscribes the stream.
+  const onNewOrderRef = useRef(onNewOrder);
+  onNewOrderRef.current = onNewOrder;
+  // Ids we've already shown — so a reconnect replay never re-sounds.
+  const seenRef = useRef<Set<string>>(new Set());
+  // Suppress the sound during the initial replay burst right after (re)connect.
+  const readyRef = useRef(false);
 
   const removeOrder = useCallback((id: string) => {
     setOrders((prev) => prev.filter((o) => o.id !== id));
   }, []);
 
   const connect = useCallback(() => {
-    if (!restaurantId) return;
+    if (!id) return;
     // tear down any previous stream
     esRef.current?.close();
 
     const qs = token ? `?token=${encodeURIComponent(token)}` : '';
-    const es = new EventSource(`${API_BASE}/kitchen/restaurants/${restaurantId}/stream${qs}`);
+    const es = new EventSource(`${API_BASE}/kitchen/${scopeKind}/${id}/stream${qs}`);
     esRef.current = es;
     setConn('connecting');
 
     es.onopen = () => {
       attemptsRef.current = 0;
       setConn('online');
+      // Replay of existing pending orders arrives now — don't sound for those.
+      readyRef.current = false;
+      window.setTimeout(() => { readyRef.current = true; }, 1500);
     };
 
     // new order -> prepend (newest on top), dedupe by id (replay re-sends on reconnect)
     es.addEventListener('order:new', (e) => {
       try {
         const order: KdsOrder = JSON.parse((e as MessageEvent).data);
+        const isNew = !seenRef.current.has(order.id);
+        seenRef.current.add(order.id);
+        if (isNew && readyRef.current) onNewOrderRef.current?.(); // genuinely new → sound
         setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
       } catch {
         /* ignore malformed */
@@ -87,7 +113,7 @@ export function useOrderStream(restaurantId?: string, token?: string) {
         retryRef.current = window.setTimeout(connect, delay);
       }
     };
-  }, [restaurantId, token, removeOrder]);
+  }, [scopeKind, id, token, removeOrder]);
 
   useEffect(() => {
     connect();
@@ -100,16 +126,37 @@ export function useOrderStream(restaurantId?: string, token?: string) {
   return { orders, conn, removeOrder };
 }
 
-/** Kitchen "Принял": acknowledge an order (device-token auth, advances order status). */
-export async function acceptOrder(restaurantId: string, orderId: string, token?: string) {
-  const res = await fetch(`${API_BASE}/kitchen/restaurants/${restaurantId}/ack`, {
+/** Load the scope's identity (restaurant name + logo, branch name + address) for the header. */
+export async function fetchScopeInfo(
+  scopeKind: KdsScopeKind,
+  id: string,
+  token?: string,
+): Promise<KdsScopeInfo | null> {
+  const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+  const res = await fetch(`${API_BASE}/kitchen/${scopeKind}/${id}/info${qs}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  return (json?.data as KdsScopeInfo) ?? null;
+}
+
+/** Acknowledge an order at the kitchen (device-token auth, advances order status). */
+async function ackOrder(scopeKind: KdsScopeKind, id: string, orderId: string, status: 'accepted' | 'ready', token?: string) {
+  const res = await fetch(`${API_BASE}/kitchen/${scopeKind}/${id}/ack`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'x-device-token': token } : {}),
     },
-    body: JSON.stringify({ orderId, status: 'accepted' }),
+    body: JSON.stringify({ orderId, status }),
   });
   if (!res.ok) throw new Error(`ack failed: ${res.status}`);
   return res.json();
 }
+
+/** Kitchen "Принял": started preparing → order moves to 'cooking'. */
+export const acceptOrder = (scopeKind: KdsScopeKind, id: string, orderId: string, token?: string) =>
+  ackOrder(scopeKind, id, orderId, 'accepted', token);
+
+/** Kitchen "Готово": finished cooking → order moves to 'ready'. */
+export const readyOrder = (scopeKind: KdsScopeKind, id: string, orderId: string, token?: string) =>
+  ackOrder(scopeKind, id, orderId, 'ready', token);

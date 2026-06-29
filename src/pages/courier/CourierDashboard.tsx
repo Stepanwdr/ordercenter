@@ -740,7 +740,7 @@ export default function CourierDashboard() {
   const updateOrderPayMethodMut = useUpdateOrderPayMethodMutation();
 
   const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('pending');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<'filter' | 'status' | 'payment'>('filter');
   const [payOrderId, setPayOrderId] = useState<string | null>(null);
@@ -1039,35 +1039,6 @@ export default function CourierDashboard() {
             <span>${(order.totalAmount ?? order.price ?? 0).toFixed(2)}</span>
           </TotalsRow>
 
-          {/*{(order.courierRestaurantAt || order.courierPickedUpAt || order.courierInRouteAt || order.courierDeliveredAt) && (*/}
-          {/*  <TimelineGrid>*/}
-          {/*    {order.courierRestaurantAt && (*/}
-          {/*      <TimelineItem>*/}
-          {/*        <TimelineLabel>🏪 Ռեստորանում</TimelineLabel>*/}
-          {/*        <TimelineValue>{formatTime(order.courierRestaurantAt)}</TimelineValue>*/}
-          {/*      </TimelineItem>*/}
-          {/*    )}*/}
-          {/*    {order.courierPickedUpAt && (*/}
-          {/*      <TimelineItem>*/}
-          {/*        <TimelineLabel>📦 Վերցրել է</TimelineLabel>*/}
-          {/*        <TimelineValue>{formatTime(order.courierPickedUpAt)}</TimelineValue>*/}
-          {/*      </TimelineItem>*/}
-          {/*    )}*/}
-          {/*    {order.courierInRouteAt && (*/}
-          {/*      <TimelineItem>*/}
-          {/*        <TimelineLabel>🛵 Ճանապարհին</TimelineLabel>*/}
-          {/*        <TimelineValue>{formatTime(order.courierInRouteAt)}</TimelineValue>*/}
-          {/*      </TimelineItem>*/}
-          {/*    )}*/}
-          {/*    {order.courierDeliveredAt && (*/}
-          {/*      <TimelineItem>*/}
-          {/*        <TimelineLabel>✅ Հասցված</TimelineLabel>*/}
-          {/*        <TimelineValue>{formatTime(order.courierDeliveredAt)}</TimelineValue>*/}
-          {/*      </TimelineItem>*/}
-          {/*    )}*/}
-          {/*  </TimelineGrid>*/}
-          {/*)}*/}
-
           {!['done', 'completed', 'cancelled'].includes(order.status) && (
             <>
               {(() => {
@@ -1083,19 +1054,6 @@ export default function CourierDashboard() {
                   </MainActionBtn>
                 );
               })()}
-              {ORDER_STATUS_FLOW[order.status] && ORDER_STATUS_FLOW[order.status].length > 0 && (
-                <CourierStatusActions>
-                  {ORDER_STATUS_FLOW[order.status].map((nextStatus) => (
-                    <CourierActionBtn
-                      key={nextStatus}
-                      $color="rgba(255,255,255,0.08)"
-                      onClick={() => handleOrderStatusChange(order.id, nextStatus)}
-                    >
-                      → {orderStatusLabel(nextStatus)}
-                    </CourierActionBtn>
-                  ))}
-                </CourierStatusActions>
-              )}
             </>
           )}
 

@@ -29,7 +29,42 @@ class CourierService {
     });
     const countByCourier = {};
     rows.forEach((r) => { countByCourier[r.courierId] = Number(r.cnt) || 0; });
-    return couriers.map((c) => withLoad(c, countByCourier[c.userId] || 0));
+
+    // Address to show on the card: the CURRENT (active) order's address if the courier has
+    // one in progress, otherwise where they finished their most recent order.
+    const courierIds = couriers.map((c) => c.userId).filter(Boolean);
+    const currentByCourier = {};
+    const lastByCourier = {};
+    if (courierIds.length) {
+      const [active, completed] = await Promise.all([
+        Order.findAll({
+          where: { courierId: { [Op.in]: courierIds }, status: { [Op.in]: ACTIVE_ORDER_STATUSES } },
+          attributes: ['courierId', 'code', 'deliveryAddress', 'createdAt'],
+          order: [['createdAt', 'DESC']],
+        }),
+        Order.findAll({
+          where: { courierId: { [Op.in]: courierIds }, status: { [Op.in]: ['done', 'completed'] } },
+          attributes: ['courierId', 'code', 'deliveryAddress', 'completedAt', 'createdAt'],
+          order: [['completedAt', 'DESC'], ['createdAt', 'DESC']],
+        }),
+      ]);
+      for (const o of active) {
+        if (!currentByCourier[o.courierId]) {
+          currentByCourier[o.courierId] = { code: o.code, address: o.deliveryAddress, at: o.createdAt, current: true };
+        }
+      }
+      for (const o of completed) {
+        if (!lastByCourier[o.courierId]) {
+          lastByCourier[o.courierId] = { code: o.code, address: o.deliveryAddress, at: o.completedAt || o.createdAt, current: false };
+        }
+      }
+    }
+
+    return couriers.map((c) => {
+      const json = withLoad(c, countByCourier[c.userId] || 0);
+      json.lastDelivery = currentByCourier[c.userId] || lastByCourier[c.userId] || null;
+      return json;
+    });
   }
 
   static async getCourier(userId) {
@@ -46,10 +81,7 @@ class CourierService {
   static async createCourier(payload, auth) {
   const {name = '',email = '', phone='', restaurantId }=payload
     const user = await User.create({ password: 'changeme', role: 'courier',name,email,phone });
-    if (restaurantId) {
-      const restaurantExists = await Restaurant.findByPk(restaurantId);
-      if (!restaurantExists) throw new AppError(404, 'Restaurant not found');
-    }
+
     const courier = await Courier.create({ userId: user.id,name: payload.name, status: payload?.status ?? 'free', lat: payload?.lat ?? null, lng: payload?.lng ?? null, maxOrders: payload?.maxOrders ?? 3, restaurantId });
     // persist telegramId if provided
     if (payload.telegramId) {

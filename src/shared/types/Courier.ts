@@ -15,4 +15,6 @@ export interface Courier extends User {
   maxOrders?: number;
   activeOrdersCount?: number;
   availableSlots?: number;
+  // Address shown on the card: the current (active) order if any, else the last finished one.
+  lastDelivery?: { code?: string; address?: string | null; at?: string | null; current?: boolean } | null;
 }

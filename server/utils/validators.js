@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const roleSchema = z.enum(['admin', 'courier', 'customer', 'operator']);
+const roleSchema = z.enum(['admin', 'courier', 'customer', 'operator', 'dispatcher', 'manager']);
 export const courierStatuses= ['atRestaurant','pickedUp','enRoute','delivered','free','dayOff','offline','busy']
 const courierStatusSchema = z.enum(courierStatuses);
 
@@ -140,6 +140,8 @@ export const schemas = {
         menuItemId: z.string().min(1).max(128),
         quantity: z.number().min(1),
         price: z.number().min(0),
+        // Per-line kitchen note (e.g. "острый, без лука").
+        note: z.string().max(255).optional(),
       })
     )
   }),
@@ -185,6 +187,19 @@ export const schemas = {
     floor: z.string().max(64).optional(),
     domofon: z.string().max(64).optional(),
     addressComment: z.string().max(512).optional(),
+    branchId: z.string().uuid().optional(),
+    courierId: z.string().uuid().optional(),
+    // When provided, the order's line items are fully replaced and the price recomputed.
+    orderItems: z
+      .array(
+        z.object({
+          menuItemId: z.string().min(1).max(128),
+          quantity: z.number().min(1),
+          price: z.number().min(0),
+          note: z.string().max(255).optional(),
+        }),
+      )
+      .optional(),
   }),
   createUser: z.object({
     email: z.string().email(),
@@ -223,7 +238,6 @@ export const schemas = {
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
     email: z.string().email(),
-    restaurantId: z.string().uuid(),
     telegramId: z.string().optional(),
     maxOrders: z.coerce.number().int().min(0).optional(),
   }),

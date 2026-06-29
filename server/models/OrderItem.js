@@ -29,6 +29,11 @@ OrderItem.init(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
+    // Per-line kitchen note: special requests like "острый", "без лука".
+    note: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     sequelize,

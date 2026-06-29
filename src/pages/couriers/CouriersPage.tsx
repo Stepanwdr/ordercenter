@@ -25,7 +25,6 @@ const initialCourierForm = {
   status: 'free' as Courier['status'],
   currentOrder: '',
   email:'',
-  restaurantId:"",
   maxOrders: 3,
 };
 
@@ -38,7 +37,7 @@ const initialCourierForm = {
   const [generatedLink, setGeneratedLink] = useState('');
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [formState, setFormState] = useState({ ...initialCourierForm, restaurantId: '' as string });
+  const [formState, setFormState] = useState({ ...initialCourierForm });
   const [courierOrders, setCourierOrders] = useState<Order[]>([]);
   const { data: restaurantsApi } = useRestaurantsQuery();
   const navigate = useNavigate();
@@ -46,6 +45,7 @@ const initialCourierForm = {
   // Load the selected courier's orders to show their current (active) ones as cards.
   useEffect(() => {
     if (!selectedCourier) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCourierOrders([]);
       return;
     }
@@ -83,7 +83,6 @@ const initialCourierForm = {
           phone: formState.phone,
           status: formState.status as Courier['status'],
           currentOrder: formState.currentOrder,
-          restaurantId: (formState).restaurantId,
           email: formState.email,
           maxOrders: Number(formState.maxOrders) || 0,
         }
@@ -97,7 +96,6 @@ const initialCourierForm = {
             phone: formState.phone,
             status: formState.status,
             currentOrder: formState.currentOrder,
-            restaurantId: formState.restaurantId,
             maxOrders: Number(formState.maxOrders) || 0,
           }
         }
@@ -178,7 +176,6 @@ const editOptions=[
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormState({
         ...initialCourierForm,
-        restaurantId:selectedCourier.restaurant?.id || '',
         email: selectedCourier?.user?.email || '',
         phone:selectedCourier?.user?.phone || '',
         status: selectedCourier.status || 'free' ,
@@ -259,17 +256,6 @@ const editOptions=[
               placeholder="Առաքիչի անուն"
             />
           </FormField>
-          <FormField>
-            Ռեստորանը
-            <Dropdown
-              value={formState.restaurantId}
-              options={restaurantOptions}
-              placeholder="Ընտրել ռեստորանը"
-              onChange={(value) =>  setFormState({ ...formState, restaurantId: value })}
-              triggerDisplay="chip"
-            />
-          </FormField>
-
           <FormField>
             Հեռախոս
             <Input

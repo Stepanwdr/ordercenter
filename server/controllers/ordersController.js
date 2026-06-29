@@ -2,7 +2,7 @@ import OrderService from '../services/orderService.js';
 
 class OrdersController {
   static list = async (req, res) => {
-    const result = await OrderService.listOrders(req.query);
+    const result = await OrderService.listOrders(req.query, req.auth);
     res.json({
       success: true,
       ...result,
@@ -14,8 +14,13 @@ class OrdersController {
     res.json({ success: true, data: stats });
   };
 
+  static statusCounts = async (req, res) => {
+    const counts = await OrderService.getStatusCounts(req.query, req.auth);
+    res.json({ success: true, data: counts });
+  };
+
   static get = async (req, res) => {
-    const order = await OrderService.getOrder(req.params.id);
+    const order = await OrderService.getOrder(req.params.id, req.auth);
     res.json({ success: true, data: order });
   };
 

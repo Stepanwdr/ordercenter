@@ -37,13 +37,6 @@ import { useRestaurantsQuery } from '@app/hooks/dataApi';
       return;
     }
 
-    if (role === 'courier' && !restaurantId) {
-      const message = 'Ընտրեք ռեստորան առաքիչի համար';
-      toast.error(message);
-      setError(message);
-      return;
-    }
-
     // Client-side schema validation
     try {
       registerSchema.parse({ name: name.trim(), email: email.trim(), password: password.trim(), role });
@@ -110,18 +103,6 @@ const rolesOption =[{
               triggerDisplay="chip"
             />
           </Field>
-          {role === 'courier' && (
-            <Field>
-              Ռեստորան
-              <Dropdown
-                value={restaurantId}
-                options={restaurantOptions}
-                placeholder="Ընտրել ռեստորան"
-                onChange={(value) => setRestaurantId(value)}
-                triggerDisplay="chip"
-              />
-            </Field>
-          )}
           <Field>
            Անուն Ազգանուն
             <Input

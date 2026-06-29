@@ -475,7 +475,7 @@ const MenuManagementPage = () => {
               />
             </Label>
           </Grid3>
-          <Label>
+          <Label style={{maxWidth:"250px"}}>
             Ապրանքի նկարը
             <ImageUploader
               value={image || null}

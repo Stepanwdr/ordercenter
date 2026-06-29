@@ -8,6 +8,7 @@ import telegramRoutes from './telegram.js';
 import menusRoutes from './menus.js';
 import menuItemsRoutes from './menuItems.js';
 import categoriesRoutes from './categories.js';
+import managerRoutes from './manager.js';
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.use('/menus', menusRoutes);
 router.use('/menus', menuItemsRoutes);
 router.use('/categories', categoriesRoutes);
 router.use('/couriers', courierRoutes);
+router.use('/manager', managerRoutes);
 router.use('/telegram', telegramRoutes);
 
 export default router;

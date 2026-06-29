@@ -1,7 +1,7 @@
 import type { Restaurant } from "@shared/types/Restaurant.ts";
 import type { Order } from "@shared/types/Order.ts";
 
-export type UserRole = 'admin' | 'courier'| 'customer' | 'operator'
+export type UserRole = 'admin' | 'courier' | 'customer' | 'operator' | 'dispatcher' | 'manager'
 
 export interface User {
   id: string;

@@ -45,6 +45,7 @@ export async function serializeOrderForKitchen(orderId) {
       name: it.menuItem?.name ?? null,
       quantity: it.quantity,
       price: Number(it.price ?? 0),
+      note: it.note ?? null,
     })),
     total: Number(order.price ?? 0),
   };

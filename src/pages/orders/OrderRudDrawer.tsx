@@ -21,7 +21,7 @@ const statusOptions = [
   { value: 'done', label: 'Ավարտված' },
 ];
 
-export function OrderRudDrawer({ order, onClose }: { order: Order; onClose: () => void }) {
+export function OrderRudDrawer({ order, onClose, onEdit }: { order: Order; onClose: () => void; onEdit?: (order: Order) => void }) {
   const update = useUpdateOrderMutation();
   const del = useDeleteOrderMutation();
   const [confirmDel, setConfirmDel] = useState(false);
@@ -69,13 +69,12 @@ export function OrderRudDrawer({ order, onClose }: { order: Order; onClose: () =
       toast.error('Չհաջողվեց ջնջել');
     }
   };
-
+  console.log(order)
   return (
     <Wrap>
-      <Title>#{order.code}</Title>
       <Meta>
         {order.restaurant?.name}
-        {order.branch?.name ? ` · ${order.branch.name}` : ''} · {new Date(order.createdAt).toLocaleString('ru-RU')}
+        {order.branch?.address ? ` · ${order.branch.address}` : ''} · {new Date(order.createdAt).toLocaleString('ru-RU')}
       </Meta>
 
       <Grid>
@@ -121,7 +120,7 @@ export function OrderRudDrawer({ order, onClose }: { order: Order; onClose: () =
       <Items>
         {(order.orderItems ?? []).map((it, i) => (
           <li key={it.id ?? i}>
-            <span>{it.quantity}× {it.menuItem?.name ?? it.name ?? '—'}</span>
+            <span>{it.quantity}× {it.menuItem?.name ?? it.name ?? '—'}{it.note ? ` · 📝 ${it.note}` : ''}</span>
             <b>{(Number(it.price) * it.quantity).toFixed(2)}</b>
           </li>
         ))}
@@ -131,7 +130,7 @@ export function OrderRudDrawer({ order, onClose }: { order: Order; onClose: () =
       <Actions>
         <Button type="button" variant="ghost" onClick={() => setConfirmDel(true)}>🗑 Ջնջել</Button>
         <Spacer />
-        <Button type="button" variant="secondary" onClick={onClose}>Չեղարկել</Button>
+        {onEdit && <Button type="button" variant="secondary" onClick={() => onEdit(order)}>Փոփոփել մենյուն</Button>}
         <Button type="button" onClick={save} disabled={update.isPending}>{update.isPending ? '...' : 'Պահել'}</Button>
       </Actions>
 

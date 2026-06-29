@@ -22,7 +22,7 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('admin', 'courier', 'customer', 'operator','dispatcher'),
+      type: DataTypes.ENUM('admin', 'courier', 'customer', 'operator', 'dispatcher', 'manager'),
       allowNull: false,
       defaultValue: 'operator',
     },

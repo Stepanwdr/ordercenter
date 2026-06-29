@@ -24,6 +24,7 @@ export interface OrderItem {
   name: string;
   quantity: number;
   price: number;
+  note?: string | null;
   menuItem: menuItem
 }
 
