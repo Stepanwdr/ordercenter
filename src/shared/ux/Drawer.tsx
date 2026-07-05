@@ -11,6 +11,7 @@ interface DrawerProps {
   children: ReactNode;
   onClose: () => void;
   closeOnBackdropClick?: boolean;
+  openWidth?:string
 }
 
 const Backdrop = styled.div<{ $visible: boolean }>`
@@ -94,10 +95,11 @@ const slideOutTop = keyframes`
 const Panel = styled.div<{
   position: DrawerPosition;
   $visible: boolean;
+  $openWidth:string
 }>`
     position: fixed;
 
-    ${({ position }) => {
+    ${({ position,$openWidth }) => {
         switch (position) {
             case 'bottom':
                 return `
@@ -126,7 +128,7 @@ const Panel = styled.div<{
           top: 0;
           bottom: 0;
           left: 0;
-          width: 420px;
+          width: ${$openWidth};
           max-width: 100%;
           height: 100%;
           border-radius: 0 24px 24px 0;
@@ -137,7 +139,7 @@ const Panel = styled.div<{
           top: 0;
           bottom: 0;
           right: 0;
-          width: 420px;
+          width: ${$openWidth};
           max-width: 100%;
           height: 100%;
           border-radius: 24px 0 0 24px;
@@ -198,6 +200,7 @@ export const Drawer = ({
   children,
   onClose,
   closeOnBackdropClick = true,
+  openWidth = '420px'
 }: DrawerProps) => {
   const [mounted, setMounted] = useState(open);
   const [visible, setVisible] = useState(open);
@@ -223,7 +226,7 @@ export const Drawer = ({
 
   return (
     <Backdrop $visible={visible} onClick={handleBackdropClick}>
-      <Panel position={position} $visible={visible} onClick={(event) => event.stopPropagation()}>
+      <Panel $openWidth={openWidth} position={position} $visible={visible} onClick={(event) => event.stopPropagation()}>
         <Header>
           <Title>{title ?? 'Drawer'}</Title>
           <Button variant="ghost" onClick={onClose} type="button">

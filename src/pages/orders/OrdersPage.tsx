@@ -143,6 +143,7 @@ const OrdersPage = () => {
   const [isOpenCouriersDialog,setOpenCouriersDialog]=useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
+  const [courierTab, setCourierTab] = useState<'free' | 'busy'>('free');
   const [search, setSearch] = useState('');
   const [courierId, setCourierId] = useState('');
   const [activeStatus, setActiveStatus] = useState<(typeof statuses)[number]>('all');
@@ -187,6 +188,16 @@ const OrdersPage = () => {
   const totalPages = Math.max(1, ordersMeta?.totalPages ?? 1);
 
   const allCouriers = couriersResponse?.data ?? [];
+  // Split the couriers aside into Free / Busy by remaining capacity (available slots).
+  const isCourierFull = (c: Courier) => {
+    const max = c.maxOrders ?? 0;
+    const active = c.activeOrdersCount ?? 0;
+    const free = c.availableSlots ?? Math.max(0, max - active);
+    return free <= 0;
+  };
+  const freeCouriers = allCouriers.filter((c) => !isCourierFull(c));
+  const busyCouriers = allCouriers.filter((c) => isCourierFull(c));
+  const shownCouriers = courierTab === 'free' ? freeCouriers : busyCouriers;
   // Filter couriers by selected restaurant if present
   const courierOptions = allCouriers
     .map((c) => ({ value: (c as any).userId ?? (c as any).id, label: c.user?.name ?? c.user?.email ?? (c as any).name ?? 'Courier' }));
@@ -482,24 +493,27 @@ const OrdersPage = () => {
 
   return (
     <div>
+      <ContentRow>
+        <MainCol>
       <Header>
         <div>
           <Title>Պատվերներ</Title>
         </div>
-        <Button onClick={() => { setEditOrder(null); setCreateOpen(true); }} variant="primary">
-          Ստեղծել պատվեր
-        </Button>
       </Header>
       <Toolbar>
         <Controls>
-          <div>
+          <div style={{ gridColumn: '1 / -1' }}>
             <Label>Որոնել</Label>
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
+            <SearchInputWrap>
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
+              <CreateInlineBtn type="button" onClick={() => { setEditOrder(null); setCreateOpen(true); }}>
+                Ստեղծել պատվեր
+              </CreateInlineBtn>
+            </SearchInputWrap>
           </div>
-
         </Controls>
         <ControlsRow>
           <span style={{ color: 'rgba(255,255,255,0.72)' }}> գտնվել է {totalCount} պատվեր  </span>
@@ -535,17 +549,26 @@ const OrdersPage = () => {
         </TableTopBar>
       </StatusTabs>
 
-      <ContentRow>
         <TableSection style={{ flex: 1, minWidth: 0 }}>
 
           <Table<Order> rows={orders} columns={visibleColumns} className={'orders-table'} sortColumns={sortColumns} onSortColumnsChange={setSortColumns} onColumnsReorder={handleColumnsReorder} onRowDoubleClick={(row) => setRudOrder(row)} />
           <Pagination currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
         </TableSection>
+        </MainCol>
 
         <CouriersAside>
           <AsideTitle>Առաքիչներ ({allCouriers.length})</AsideTitle>
-          {allCouriers.length === 0 && <AsideEmpty>Առաքիչներ չկան</AsideEmpty>}
-          {allCouriers.map((courier) => {
+          <CourierTabs>
+            <CourierTab type="button" $active={courierTab === 'free'} onClick={() => setCourierTab('free')}>
+              Ազատ <b>{freeCouriers.length}</b>
+            </CourierTab>
+            <CourierTab type="button" $active={courierTab === 'busy'} onClick={() => setCourierTab('busy')}>
+              Զբաղված <b>{busyCouriers.length}</b>
+            </CourierTab>
+          </CourierTabs>
+          <CourierList>
+          {shownCouriers.length === 0 && <AsideEmpty>Առաքիչներ չկան</AsideEmpty>}
+          {shownCouriers.map((courier) => {
             const cid = (courier as any).userId ?? courier.id;
             const max = courier.maxOrders ?? 0;
             const active = courier.activeOrdersCount ?? 0;
@@ -577,6 +600,7 @@ const OrdersPage = () => {
               </CourierCard>
             );
           })}
+          </CourierList>
         </CouriersAside>
       </ContentRow>
 
@@ -586,7 +610,7 @@ const OrdersPage = () => {
       <Drawer open={Boolean(selectedOrder)} position="bottom" title="Առաքիչների ցանկ" onClose={() => setSelectedOrder(null)}>
         <CouriersPage selectedOrder={selectedOrder} handleCourierAsignToOrder={handleCourierAsignToOrder} />
       </Drawer>
-      <Drawer open={Boolean(courierDetailsId)} position="right" title="Առաքիչ" onClose={() => setCourierDetailsId(null)}>
+      <Drawer openWidth={'600px'} open={Boolean(courierDetailsId)} position="right" title="Առաքիչ" onClose={() => setCourierDetailsId(null)}>
         {courierDetailsId && <CourierPage id={courierDetailsId} onClose={() => setCourierDetailsId(null)} />}
       </Drawer>
       <Drawer open={Boolean(rudOrder)} position="right" title={rudOrder ? `Պատվեր #${rudOrder.code}` : 'Պատվեր'} onClose={() => setRudOrder(null)}>
@@ -601,7 +625,7 @@ export default OrdersPage
 const Header = styled.div`
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 16px;
     margin-bottom: 24px;
 `;
@@ -694,24 +718,84 @@ const ContentRow = styled.div`
     align-items: flex-start;
 `;
 
+// Left column holds everything (title, search, tabs, table); the couriers aside is the
+// full-height right column beside it.
+const MainCol = styled.div`
+    flex: 1;
+    min-width: 0;
+`;
+
+// Wraps the search input so the "create order" button can float at its right end.
+const SearchInputWrap = styled.div`
+    position: relative;
+    input { padding-right: 180px; }
+`;
+const CreateInlineBtn = styled.button`
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    border-radius: 32px;
+    cursor: pointer;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+    background: linear-gradient(135deg, #5d7bff, #34d399);
+    white-space: nowrap;
+    &:hover { opacity: 0.95; }
+`;
+
 const CouriersAside = styled.aside`
     width: 320px;
     flex-shrink: 0;
-    margin-top: 20px;
     position: sticky;
-    top: 16px;
-    max-height: calc(100vh - 140px);
+    /* Full-height right column: fills the viewport, header/tabs pinned, cards scroll. */
+    height: calc(100vh - 85px);
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 14px;
+    box-sizing: border-box;
+    overflow: hidden;
+    @media (max-width: 1200px) { display: none; }
+`;
+
+const CourierList = styled.div`
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: grid;
     gap: 10px;
     align-content: start;
-    @media (max-width: 1200px) { display: none; }
+    padding-right: 2px;
 `;
 
 const AsideTitle = styled.h3`
-    margin: 0 0 4px;
+    margin: 0 0 10px;
     font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.78);
+`;
+
+const CourierTabs = styled.div`
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+`;
+const CourierTab = styled.button<{ $active?: boolean }>`
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: ${({ $active }) => ($active ? '#fff' : 'rgba(255,255,255,0.7)')};
+    border: 1px solid ${({ $active }) => ($active ? 'rgba(79,143,255,0.7)' : 'rgba(255,255,255,0.12)')};
+    background: ${({ $active }) => ($active ? 'rgba(79,143,255,0.18)' : 'rgba(255,255,255,0.04)')};
+    b { opacity: 0.85; }
 `;
 
 const CourierCard = styled.button`

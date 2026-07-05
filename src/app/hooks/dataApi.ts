@@ -272,6 +272,7 @@ export const useAssignCourierMutation = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
       await queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders-paged'] });
     },
   });
 };
