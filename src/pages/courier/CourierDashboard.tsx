@@ -813,7 +813,10 @@ export default function CourierDashboard() {
   // Deep link from the Telegram notification: ?orderId=<id> opens that order's preview sheet.
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkOrderId = searchParams.get('orderId') || undefined;
-  const { data: previewOrder } = useOrderQuery(deepLinkOrderId);
+  const { data: fetchedPreview } = useOrderQuery(deepLinkOrderId);
+  // Prefer the order from the courier's own (already-scoped) list so the sheet still opens
+  // even if the direct /orders/:id fetch is blocked or the order isn't on this API.
+  const previewOrder = fetchedPreview ?? orders.find((o) => o.id === deepLinkOrderId);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
