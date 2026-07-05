@@ -9,7 +9,7 @@ type Props = {
 };
 
 const Wrapper = styled.div` display: flex; flex-direction: column; gap: 8px; `;
-const Preview = styled.div` width: 120px; height: 120px; border-radius: 8px; overflow: hidden; background: #111; display: flex; align-items: center; justify-content: center; `;
+const Preview = styled.div<{ $drag?: boolean }>` width: 120px; height: 120px; border-radius: 8px; overflow: hidden; background: #111; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px dashed ${({ $drag }) => ($drag ? '#4f8fff' : '#444')}; color: rgba(255,255,255,0.6); font-size: 13px; `;
 const Img = styled.img` width: 100%; height: 100%; object-fit: cover; `;
 const Button = styled.button` padding: 8px 12px; border-radius: 6px; border: 1px solid #444; background: #1f2937; color: white; cursor: pointer; `;
 const HiddenInput = styled.input` display: none; `;
@@ -41,13 +41,13 @@ export const ImageUploader = ({ value, onChange, label }: Props) => {
       const f = e.dataTransfer?.files?.[0]; if (f) onFileChosen(f);
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Preview>{localPreview ? <Img src={localPreview} alt="avatar" /> : (value ? <Img src={value} alt="avatar" /> : <span>Загрузить</span>)}</Preview>
-        {/*<Button type="button" onClick={() => fileRef.current?.click()} style={{ height: 32 }}>*/}
-        {/*  Выбрать файл*/}
-        {/*</Button>*/}
+        <Preview $drag={dragOver} onClick={() => fileRef.current?.click()} title="Загрузить изображение">
+          {localPreview ? <Img src={localPreview} alt="avatar" /> : (value ? <Img src={value} alt="avatar" /> : <span>{dragOver ? 'Отпустите' : '＋ Загрузить'}</span>)}
+        </Preview>
       </div>
       <HiddenInput ref={fileRef} type="file" accept="image/*" onChange={(e) => {
         const f = e.target.files?.[0]; if (f) onFileChosen(f);
+        e.target.value = ''; // allow re-selecting the same file
       }} />
       {label && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{label}</span>}
     </Wrapper>

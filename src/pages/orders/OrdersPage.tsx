@@ -499,6 +499,9 @@ const OrdersPage = () => {
         <div>
           <Title>Պատվերներ</Title>
         </div>
+        <CreateInlineBtn type="button" onClick={() => { setEditOrder(null); setCreateOpen(true); }}>
+          Ստեղծել պատվեր
+        </CreateInlineBtn>
       </Header>
       <Toolbar>
         <Controls>
@@ -509,9 +512,7 @@ const OrdersPage = () => {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Որոնում։ Ռեստորան կամ առաքիչ"/>
-              <CreateInlineBtn type="button" onClick={() => { setEditOrder(null); setCreateOpen(true); }}>
-                Ստեղծել պատվեր
-              </CreateInlineBtn>
+
             </SearchInputWrap>
           </div>
         </Controls>
@@ -563,7 +564,7 @@ const OrdersPage = () => {
               Ազատ <b>{freeCouriers.length}</b>
             </CourierTab>
             <CourierTab type="button" $active={courierTab === 'busy'} onClick={() => setCourierTab('busy')}>
-              Զբաղված <b>{busyCouriers.length}</b>
+              Լրացված <b>{busyCouriers.length}</b>
             </CourierTab>
           </CourierTabs>
           <CourierList>
@@ -731,10 +732,6 @@ const SearchInputWrap = styled.div`
     input { padding-right: 180px; }
 `;
 const CreateInlineBtn = styled.button`
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
     border: none;
     border-radius: 32px;
     cursor: pointer;

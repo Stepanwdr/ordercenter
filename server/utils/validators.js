@@ -248,7 +248,6 @@ export const schemas = {
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
     email: z.string().email().optional(),
-    restaurantId: z.string().uuid().nullable().optional(),
     telegramId: z.string().optional(),
     avatar: z.string().optional(),
     maxOrders: z.coerce.number().int().min(0).optional(),
