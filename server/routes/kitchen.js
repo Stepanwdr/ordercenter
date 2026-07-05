@@ -3,6 +3,7 @@ import { Restaurant, RestaurantAddress } from '../models/index.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import kitchenDispatcher from '../services/kitchen/kitchenDispatcher.js';
 import { addClient } from '../services/kitchen/kitchenStream.js';
+import { applyCorsHeaders } from '../utils/cors.js';
 
 const router = express.Router();
 
@@ -39,6 +40,10 @@ function registerScope(prefix, kind) {
         return;
       }
 
+      // Set CORS on the SSE response itself — EventSource is cross-origin (frontend →
+      // api.deliverydepartment.am) and a reverse proxy may not carry the cors() middleware's
+      // headers through this long-lived streaming response.
+      applyCorsHeaders(req, res);
       res.set({
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

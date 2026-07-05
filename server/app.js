@@ -14,24 +14,11 @@ import telegramWebhookRouter from './routes/telegramWebhook.js';
 import { initKitchenRetry } from './services/kitchen/retryWorker.js';
 import authorization from './middlewares/authorization.js';
 import errorHandler from './middlewares/errorHandler.js';
+import { isAllowedOrigin } from './utils/cors.js';
 
 dotenv.config();
 
 const app = express();
-
-// Extra allowed origins via env (comma-separated), e.g. CORS_ORIGINS="https://crm.example.am".
-const corsOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-// Allow: any *.deliverydepartment.am (and the apex), any localhost, plus CORS_ORIGINS.
-const isAllowedOrigin = (origin) =>
-  !!origin && (
-    corsOrigins.includes(origin) ||
-    /^https?:\/\/localhost(:\d+)?$/i.test(origin) ||
-    /^https?:\/\/([a-z0-9-]+\.)*deliverydepartment\.am$/i.test(origin)
-  );
 
 // Single CORS layer. Reflects the request origin when allowed (required for
 // credentials), handles preflight, and never throws on a disallowed origin.
