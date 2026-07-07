@@ -2,6 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
+// Kitchen realtime transport:
+//   'poll' (default) — polling only (React-Query style refetch of /pending). Simplest and
+//                      works everywhere, including shared hosting (Passenger/LiteSpeed) that
+//                      buffers/cuts SSE. This is the default because the prod host breaks SSE.
+//   'auto'           — try SSE, fall back to polling if the stream never opens.
+//   'sse'            — SSE only, no polling fallback.
+const KDS_TRANSPORT = (import.meta.env.VITE_KDS_TRANSPORT as 'auto' | 'poll' | 'sse' | undefined) ?? 'poll';
+// How often the polling transport refetches the pending list (ms).
+const KDS_POLL_MS = Number(import.meta.env.VITE_KDS_POLL_MS) || 4000;
+
 export interface KdsOrderItem {
   id: string;
   name: string | null;
@@ -96,7 +106,7 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
     };
     setConn('connecting');
     tick();
-    pollRef.current = window.setInterval(tick, 4000);
+    pollRef.current = window.setInterval(tick, KDS_POLL_MS);
   }, [scopeKind, id, token]);
 
   const connect = useCallback(() => {
@@ -110,9 +120,11 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
     setConn('connecting');
 
     // Watchdog: if SSE doesn't open within 8s (a proxy buffering the stream into oblivion),
-    // fall back to polling. Cleared the moment onopen fires.
-    if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
-    fallbackRef.current = window.setTimeout(startPolling, 8000);
+    // fall back to polling. Cleared the moment onopen fires. Skipped in 'sse'-only mode.
+    if (KDS_TRANSPORT === 'auto') {
+      if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
+      fallbackRef.current = window.setTimeout(startPolling, 8000);
+    }
 
     es.onopen = () => {
       attemptsRef.current = 0;
@@ -159,14 +171,16 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
   }, [scopeKind, id, token, removeOrder, startPolling]);
 
   useEffect(() => {
-    connect();
+    // 'poll' → skip SSE entirely and just refetch the pending list on an interval.
+    if (KDS_TRANSPORT === 'poll') startPolling();
+    else connect();
     return () => {
       if (retryRef.current) window.clearTimeout(retryRef.current);
       if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
       if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
       esRef.current?.close();
     };
-  }, [connect]);
+  }, [connect, startPolling]);
 
   return { orders, conn, removeOrder };
 }
