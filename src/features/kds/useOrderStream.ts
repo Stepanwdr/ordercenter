@@ -49,6 +49,8 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
   const [conn, setConn] = useState<ConnState>('connecting');
   const esRef = useRef<EventSource | null>(null);
   const retryRef = useRef<number | null>(null);
+  const fallbackRef = useRef<number | null>(null); // watchdog: SSE never opened → start polling
+  const pollRef = useRef<number | null>(null); // polling interval (fallback transport)
   const attemptsRef = useRef(0);
   // Keep the callback in a ref so it never re-subscribes the stream.
   const onNewOrderRef = useRef(onNewOrder);
@@ -62,8 +64,43 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
     setOrders((prev) => prev.filter((o) => o.id !== id));
   }, []);
 
+  // Fallback transport for hosts that break SSE: Passenger/LiteSpeed on shared cPanel buffer
+  // or cut the event-stream, so EventSource stays stuck "connecting" and never delivers
+  // orders. Poll the same pending list the SSE replay would have pushed. Once polling takes
+  // over it stays for the session.
+  const startPolling = useCallback(() => {
+    if (!id || pollRef.current) return;
+    esRef.current?.close();
+    if (retryRef.current) { window.clearTimeout(retryRef.current); retryRef.current = null; }
+    if (fallbackRef.current) { window.clearTimeout(fallbackRef.current); fallbackRef.current = null; }
+
+    const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+    let firstPoll = true;
+    const tick = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/kitchen/${scopeKind}/${id}/pending${qs}`);
+        if (!res.ok) { setConn('offline'); return; }
+        const json = await res.json();
+        const list = (json?.data as KdsOrder[]) ?? [];
+        setConn('online');
+        let hasNew = false;
+        for (const o of list) {
+          if (!seenRef.current.has(o.id)) { seenRef.current.add(o.id); hasNew = true; }
+        }
+        if (hasNew && !firstPoll) onNewOrderRef.current?.(); // new since last poll (not the first burst)
+        firstPoll = false;
+        setOrders(list.slice().reverse()); // /pending is ASC by createdAt; board shows newest first
+      } catch {
+        setConn('offline');
+      }
+    };
+    setConn('connecting');
+    tick();
+    pollRef.current = window.setInterval(tick, 4000);
+  }, [scopeKind, id, token]);
+
   const connect = useCallback(() => {
-    if (!id) return;
+    if (!id || pollRef.current) return; // polling took over — don't fight it with SSE
     // tear down any previous stream
     esRef.current?.close();
 
@@ -72,8 +109,14 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
     esRef.current = es;
     setConn('connecting');
 
+    // Watchdog: if SSE doesn't open within 8s (a proxy buffering the stream into oblivion),
+    // fall back to polling. Cleared the moment onopen fires.
+    if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
+    fallbackRef.current = window.setTimeout(startPolling, 8000);
+
     es.onopen = () => {
       attemptsRef.current = 0;
+      if (fallbackRef.current) { window.clearTimeout(fallbackRef.current); fallbackRef.current = null; }
       setConn('online');
       // Replay of existing pending orders arrives now — don't sound for those.
       readyRef.current = false;
@@ -113,12 +156,14 @@ export function useOrderStream(scopeKind: KdsScopeKind = 'restaurants', id?: str
         retryRef.current = window.setTimeout(connect, delay);
       }
     };
-  }, [scopeKind, id, token, removeOrder]);
+  }, [scopeKind, id, token, removeOrder, startPolling]);
 
   useEffect(() => {
     connect();
     return () => {
       if (retryRef.current) window.clearTimeout(retryRef.current);
+      if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
+      if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
       esRef.current?.close();
     };
   }, [connect]);

@@ -41,7 +41,14 @@ export const ImageUploader = ({ value, onChange, label }: Props) => {
       const f = e.dataTransfer?.files?.[0]; if (f) onFileChosen(f);
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Preview $drag={dragOver} onClick={() => fileRef.current?.click()} title="Загрузить изображение">
+        <Preview
+          $drag={dragOver}
+          // preventDefault + stopPropagation so that when this uploader sits inside a
+          // <label> (menu/restaurant forms), the label doesn't ALSO fire the hidden file
+          // input — which reopened the OS picker a second time after each upload.
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileRef.current?.click(); }}
+          title="Загрузить изображение"
+        >
           {localPreview ? <Img src={localPreview} alt="avatar" /> : (value ? <Img src={value} alt="avatar" /> : <span>{dragOver ? 'Отпустите' : '＋ Загрузить'}</span>)}
         </Preview>
       </div>
