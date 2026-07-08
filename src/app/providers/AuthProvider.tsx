@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User, UserRole } from '@shared/types';
 import { api } from '@shared/api/base';
 
@@ -40,6 +41,7 @@ const saveRegisteredUsers = (users: RegisteredUser[]) => {
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const stored = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -56,12 +58,16 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   // The axios interceptor dispatches this when a request gets 401 (invalid/expired token).
   useEffect(() => {
     const handler = () => {
+      // Token is already invalid — stop every query/poll immediately so we don't spam the
+      // server with 401s behind the re-login modal.
+      queryClient.cancelQueries();
+      queryClient.clear();
       setUser(null);
       setSessionExpired(true);
     };
     window.addEventListener('auth:session-expired', handler);
     return () => window.removeEventListener('auth:session-expired', handler);
-  }, []);
+  }, [queryClient]);
 
   const login = async (email: string, password: string) => {
     // Call backend login API via axios base api
@@ -116,7 +122,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem('order_center_access_token');
     localStorage.removeItem('order_center_refresh_token');
+    // Cancel in-flight requests and drop all cached queries so no background poll
+    // (orders/couriers/stats refetchInterval) keeps hitting the API after logout.
+    queryClient.cancelQueries();
+    queryClient.clear();
     setUser(null);
+    // Hard navigation guarantees a full teardown — nothing survives to fire a request.
+    window.location.assign('/login');
   };
 
   const value = useMemo(

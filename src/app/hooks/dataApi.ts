@@ -60,7 +60,7 @@ export interface OrdersMeta {
 
 // Like useOrdersQuery, but keeps the backend pagination/filter meta so the
 // caller can paginate server-side instead of slicing on the front.
-export const useOrdersPaginatedQuery = (query: query) =>
+export const useOrdersPaginatedQuery = (query: query, options?: { refetchInterval?: number }) =>
   useQuery<{ data: Order[]; meta: OrdersMeta }>({
     queryKey: ['orders-paged', query],
     queryFn: async () => {
@@ -69,6 +69,8 @@ export const useOrdersPaginatedQuery = (query: query) =>
       });
       return { data: res.data.data, meta: res.data.meta };
     },
+    // Optional polling (e.g. the courier dashboard auto-refreshes to surface new orders).
+    refetchInterval: options?.refetchInterval,
   });
 
 // Fetch a single order by id (used by the courier deep-link preview).

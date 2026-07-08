@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { toast } from 'react-toastify';
 import { useAuth } from '@app/providers/AuthProvider';
 import { api } from '@shared/api/base';
+import { playSound } from '@shared/lib/sound';
 import { formatTime, getDuration } from '@shared/utils/date';
 import type { Order } from '@shared/types';
 import type { CourierStatus } from '@shared/types/Courier';
@@ -15,6 +17,11 @@ import {
 } from '@app/hooks/dataApi';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+// New-order chime for the courier. Drop a file at public/sounds/new-order.mp3 or set
+// VITE_COURIER_SOUND; falls back to a generated 3-tone chime.
+const COURIER_SOUND = (import.meta.env.VITE_COURIER_SOUND as string | undefined) ?? '/sounds/new-order.mp3';
+// How often the courier dashboard polls for newly-assigned orders (ms).
+const COURIER_POLL_MS = 12000;
 const resolveAvatar = (avatar?: string) => {
   if (!avatar) return '';
   if (avatar.startsWith('http')) return avatar;
@@ -752,16 +759,42 @@ export default function CourierDashboard() {
   };
   // Server-side filtering + pagination: status/page/limit are resolved by the backend,
   // which returns the page rows plus meta (total, totalPages).
-  const { data: ordersResponse, isPending: loadingOrders } = useOrdersPaginatedQuery({
-    courierId,
-    status: filter,
-    search: '',
-    page,
-    limit: PAGE_SIZE,
-  });
+  const { data: ordersResponse, isPending: loadingOrders } = useOrdersPaginatedQuery(
+    {
+      courierId,
+      status: filter,
+      search: '',
+      page,
+      limit: PAGE_SIZE,
+    },
+    { refetchInterval: COURIER_POLL_MS }, // auto-refresh the visible list
+  );
 
   const orders = ordersResponse?.data ?? [];
   const totalPages = Math.max(1, ordersResponse?.meta?.totalPages ?? 1);
+
+  // Notify the courier (sound + toast) when a NEW order is assigned to them — independent of
+  // the visible filter/page. Polls their whole order list; a genuinely new id fires the alert.
+  const { data: notifyResponse } = useOrdersPaginatedQuery(
+    { courierId, status: 'all', search: '', page: 1, limit: 20 },
+    { refetchInterval: COURIER_POLL_MS },
+  );
+  const seenOrderIdsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!notifyResponse) return;
+    const list = notifyResponse.data ?? [];
+    // First load just seeds the "seen" set — don't alert for orders that already existed.
+    if (seenOrderIdsRef.current === null) {
+      seenOrderIdsRef.current = new Set(list.map((o) => o.id));
+      return;
+    }
+    const fresh = list.filter((o) => !seenOrderIdsRef.current!.has(o.id));
+    if (fresh.length) {
+      playSound(COURIER_SOUND, [880, 1180, 1560]);
+      toast.info(`🛵 Նոր պատվեր #${fresh[0].code}`);
+    }
+    list.forEach((o) => seenOrderIdsRef.current!.add(o.id));
+  }, [notifyResponse]);
 
   // Clamp current page if the list shrinks (e.g. after filtering)
   useEffect(() => {
