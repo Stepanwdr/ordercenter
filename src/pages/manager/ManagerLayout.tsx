@@ -75,7 +75,7 @@ export default function ManagerLayout() {
               align="right"
               labels={{ placeholder: 'Период', clear: 'Сбросить', apply: 'Применить' }}
             />
-            <CsvBtn onClick={() => downloadOrdersCsv(params)}>⬇ CSV</CsvBtn>
+            <CsvBtn onClick={() => downloadOrdersCsv(params)}>⬇ Excel</CsvBtn>
           </Controls>
         </Header>
         <Content>

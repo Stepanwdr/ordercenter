@@ -29,12 +29,12 @@ class ReportsController {
     res.json({ success: true, data });
   };
 
-  static ordersCsv = async (req, res) => {
+  static ordersXlsx = async (req, res) => {
     const { restaurantId, dateFrom, dateTo } = req.query;
-    const csv = await ReportsService.ordersCsv({ auth: req.auth, restaurantId, dateFrom, dateTo });
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="orders-report.csv"');
-    res.send(csv);
+    const { buffer, filename } = await ReportsService.ordersXlsx({ auth: req.auth, restaurantId, dateFrom, dateTo });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   };
 }
 

@@ -130,11 +130,15 @@ export const useManagerMenuQuery = (params: { restaurantId?: string }) =>
 
 // Stream the CSV report and trigger a browser download.
 export async function downloadOrdersCsv(params: ReportParams) {
-  const res = await api.get('/manager/reports/orders.csv', { params, responseType: 'blob' });
+  const res = await api.get('/manager/reports/orders.xlsx', { params, responseType: 'blob' });
+  // Prefer the server-provided filename (report-<restaurant>-<date>.xlsx), fall back to a default.
+  const cd = (res.headers?.['content-disposition'] as string | undefined) || '';
+  const match = /filename="?([^"]+)"?/.exec(cd);
+  const filename = match?.[1] || 'orders-report.xlsx';
   const url = URL.createObjectURL(res.data as Blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'orders-report.csv';
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();

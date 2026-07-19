@@ -1,9 +1,24 @@
 import { Op, fn, col, literal } from 'sequelize';
+import ExcelJS from 'exceljs';
 import { Order, OrderItem, MenuItem, Menu, Category, Restaurant, RestaurantAddress } from '../models/index.js';
 import AppError from '../utils/AppError.js';
 
 // Statuses that count as realized revenue (mirrors OrderService.getStats). 'cancelled' excluded.
 const REVENUE_STATUSES = ['done', 'completed'];
+
+// Human-readable Russian labels for the raw enum values stored on orders.
+const STATUS_LABELS = {
+  pending: 'Ожидает', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов',
+  delivering: 'Доставка', enRoute: 'В пути', done: 'Завершён', completed: 'Завершён',
+  cancelled: 'Отменён', canceled: 'Отменён',
+};
+const TYPE_LABELS = {
+  delivery: 'Доставка', pickup: 'Самовывоз', dinein: 'В зале', hall: 'В зале', takeaway: 'Навынос',
+};
+const PAY_LABELS = {
+  cash: 'Наличные', card: 'Карта', online: 'Онлайн', transfer: 'Перевод', terminal: 'Терминал',
+};
+const label = (map, v) => (v == null || v === '' ? '' : map[v] || map[String(v).toLowerCase()] || String(v));
 
 // Parse an ISO date range into a Sequelize createdAt filter (null if neither bound is valid).
 const parseRange = (dateFrom, dateTo) => {
@@ -218,37 +233,105 @@ class ReportsService {
   }
 
   /** Orders within scope + range as a CSV string (UTF-8 BOM for Excel). */
-  static async ordersCsv({ auth, restaurantId, dateFrom, dateTo }) {
-    const { ids } = await this.resolveScope(auth, restaurantId);
+  /**
+   * Build a formatted Excel (.xlsx) orders report for the period: styled header,
+   * translated labels, real Date/number cells, autofilter, freeze + totals row.
+   * Returns { buffer, filename }.
+   */
+  static async ordersXlsx({ auth, restaurantId, dateFrom, dateTo }) {
+    const { ids, owned } = await this.resolveScope(auth, restaurantId);
     const where = this.buildWhere(ids, dateFrom, dateTo, false);
 
     const orders = await Order.findAll({
       where,
-      attributes: ['code', 'createdAt', 'status', 'payMethod', 'orderType', 'price'],
+      attributes: [
+        'code', 'createdAt', 'status', 'customerName', 'customerPhone',
+        'deliveryAddress', 'courierName', 'payMethod', 'paid', 'orderType', 'price',
+      ],
       include: [{ model: RestaurantAddress, as: 'branch', attributes: ['name'] }],
       order: [['createdAt', 'DESC']],
     });
 
-    const esc = (v) => {
-      const s = v == null ? '' : String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const header = ['Код', 'Дата', 'Статус', 'Оплата', 'Тип', 'Филиал', 'Сумма'];
-    const lines = [header.join(',')];
-    for (const o of orders) {
-      lines.push(
-        [
-          esc(o.code),
-          esc(o.createdAt?.toISOString?.() || o.createdAt),
-          esc(o.status),
-          esc(o.payMethod),
-          esc(o.orderType),
-          esc(o.branch?.name || ''),
-          esc(n(o.price).toFixed(2)),
-        ].join(','),
-      );
-    }
-    return `﻿${lines.join('\r\n')}`;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Delivery Department';
+    const ws = wb.addWorksheet('Заказы', {
+      views: [{ state: 'frozen', ySplit: 1 }],
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+    });
+
+    const columns = [
+      { header: '№', key: 'idx', width: 6 },
+      { header: 'Код', key: 'code', width: 22 },
+      { header: 'Дата', key: 'date', width: 18, style: { numFmt: 'dd.mm.yyyy hh:mm' } },
+      { header: 'Статус', key: 'status', width: 14 },
+      { header: 'Клиент', key: 'customer', width: 20 },
+      { header: 'Телефон', key: 'phone', width: 16 },
+      { header: 'Адрес', key: 'address', width: 34 },
+      { header: 'Филиал', key: 'branch', width: 18 },
+      { header: 'Курьер', key: 'courier', width: 18 },
+      { header: 'Оплата', key: 'pay', width: 14 },
+      { header: 'Тип', key: 'type', width: 14 },
+      { header: 'Сумма', key: 'price', width: 14, style: { numFmt: '#,##0.00' } },
+    ];
+    ws.columns = columns;
+
+    // Header row styling.
+    const head = ws.getRow(1);
+    head.height = 22;
+    head.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F3B52' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { bottom: { style: 'thin', color: { argb: 'FF1F2637' } } };
+    });
+
+    let total = 0;
+    orders.forEach((o, i) => {
+      const price = n(o.price);
+      total += price;
+      const row = ws.addRow({
+        idx: i + 1,
+        code: o.code || '',
+        date: o.createdAt ? new Date(o.createdAt) : null,
+        status: label(STATUS_LABELS, o.status),
+        customer: o.customerName || '',
+        phone: o.customerPhone || '',
+        address: o.deliveryAddress || '',
+        branch: o.branch?.name || '',
+        courier: o.courierName || '',
+        pay: `${label(PAY_LABELS, o.payMethod)}${o.paid ? ' ✓' : ''}`.trim(),
+        type: label(TYPE_LABELS, o.orderType),
+        price,
+      });
+      // Zebra striping for readability.
+      if (i % 2 === 1) {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF4F6FA' } };
+        });
+      }
+      row.getCell('price').alignment = { horizontal: 'right' };
+      row.getCell('idx').alignment = { horizontal: 'center' };
+    });
+
+    // Totals row.
+    const totalRow = ws.addRow({ address: 'Итого', pay: `Заказов: ${orders.length}`, price: total });
+    totalRow.font = { bold: true };
+    totalRow.getCell('price').numFmt = '#,##0.00';
+    totalRow.getCell('price').alignment = { horizontal: 'right' };
+    totalRow.eachCell((cell) => {
+      cell.border = { top: { style: 'thin', color: { argb: 'FF9AA6BF' } } };
+    });
+
+    ws.autoFilter = { from: 'A1', to: `L${orders.length + 1}` };
+
+    const scopeName = restaurantId
+      ? (owned.find((r) => r.id === restaurantId)?.name || '')
+      : (owned.length === 1 ? owned[0].name : '');
+    const slug = (scopeName || 'orders').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'orders';
+    const stamp = new Date().toISOString().slice(0, 10);
+
+    const buffer = await wb.xlsx.writeBuffer();
+    return { buffer: Buffer.from(buffer), filename: `report-${slug}-${stamp}.xlsx` };
   }
 }
 

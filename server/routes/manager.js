@@ -15,6 +15,6 @@ router.get('/sales/overview', asyncHandler(ReportsController.salesOverview));
 router.get('/sales/top-items', asyncHandler(ReportsController.topItems));
 router.get('/orders', asyncHandler(ReportsController.orders));
 router.get('/menu', asyncHandler(ReportsController.menu));
-router.get('/reports/orders.csv', asyncHandler(ReportsController.ordersCsv));
+router.get('/reports/orders.xlsx', asyncHandler(ReportsController.ordersXlsx));
 
 export default router;
