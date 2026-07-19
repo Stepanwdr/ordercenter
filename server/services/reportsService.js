@@ -1,5 +1,5 @@
 import { Op, fn, col, literal } from 'sequelize';
-import { Order, OrderItem, MenuItem, Restaurant, RestaurantAddress } from '../models/index.js';
+import { Order, OrderItem, MenuItem, Menu, Category, Restaurant, RestaurantAddress } from '../models/index.js';
 import AppError from '../utils/AppError.js';
 
 // Statuses that count as realized revenue (mirrors OrderService.getStats). 'cancelled' excluded.
@@ -127,6 +127,63 @@ class ReportsService {
       byPayMethod: payRows.map((r) => ({ key: r.payMethod || '—', label: r.payMethod || '—', revenue: n(r.revenue), orders: n(r.orders) })),
       byOrderType: typeRows.map((r) => ({ key: r.orderType || '—', label: r.orderType || '—', revenue: n(r.revenue), orders: n(r.orders) })),
     };
+  }
+
+  /** Paginated orders list for the manager's restaurant(s) — for the Orders page. */
+  static async listOrders({ auth, restaurantId, dateFrom, dateTo, status, page = 1, limit = 20 }) {
+    const { ids } = await this.resolveScope(auth, restaurantId);
+    const where = this.buildWhere(ids, dateFrom, dateTo, false);
+    if (status && status !== 'all') where.status = status;
+
+    const p = Math.max(1, Number(page) || 1);
+    const lim = Math.min(100, Math.max(1, Number(limit) || 20));
+    const { count, rows } = await Order.findAndCountAll({
+      where,
+      attributes: [
+        'id', 'code', 'status', 'price', 'orderType', 'payMethod', 'paid',
+        'createdAt', 'completedAt', 'customerName', 'customerPhone', 'deliveryAddress', 'courierName',
+      ],
+      include: [{ model: RestaurantAddress, as: 'branch', attributes: ['name'] }],
+      order: [['createdAt', 'DESC']],
+      offset: (p - 1) * lim,
+      limit: lim,
+      distinct: true,
+    });
+    return {
+      data: rows,
+      meta: { total: count, page: p, limit: lim, totalPages: Math.max(1, Math.ceil(count / lim)) },
+    };
+  }
+
+  /** Menu of the manager's restaurant(s): menus → items (with category), for the Menu page. */
+  static async menu({ auth, restaurantId }) {
+    const { ids } = await this.resolveScope(auth, restaurantId);
+    if (!ids.length) return [];
+    const menus = await Menu.findAll({
+      where: { restaurantId: { [Op.in]: ids } },
+      attributes: ['id', 'name', 'restaurantId'],
+      include: [
+        {
+          model: MenuItem,
+          as: 'items',
+          attributes: ['id', 'name', 'price', 'description', 'image', 'categoryId'],
+          include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
+        },
+      ],
+      order: [['name', 'ASC']],
+    });
+    return menus.map((m) => ({
+      id: m.id,
+      name: m.name,
+      items: (m.items || []).map((it) => ({
+        id: it.id,
+        name: it.name,
+        price: Number(it.price ?? 0),
+        description: it.description || null,
+        image: it.image || null,
+        category: it.category?.name || null,
+      })),
+    }));
   }
 
   /** Best-selling menu items by quantity within scope + range (revenue-realized orders). */

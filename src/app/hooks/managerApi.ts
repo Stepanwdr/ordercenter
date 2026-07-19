@@ -78,6 +78,56 @@ export const useTopItemsQuery = (params: ReportParams & { limit?: number }) =>
     },
   });
 
+export interface ManagerOrder {
+  id: string;
+  code: string;
+  status: string;
+  price: number;
+  orderType?: string | null;
+  payMethod?: string | null;
+  paid?: boolean;
+  createdAt: string;
+  completedAt?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryAddress?: string | null;
+  courierName?: string | null;
+  branch?: { name?: string | null } | null;
+}
+export interface OrdersMeta { total: number; page: number; limit: number; totalPages: number }
+
+export const useManagerOrdersQuery = (params: ReportParams & { status?: string; page?: number; limit?: number }) =>
+  useQuery<{ data: ManagerOrder[]; meta: OrdersMeta }>({
+    queryKey: ['manager-orders', params],
+    queryFn: async () => {
+      const res = await api.get<{ data: ManagerOrder[]; meta: OrdersMeta }>('/manager/orders', { params });
+      return { data: res.data.data, meta: res.data.meta };
+    },
+  });
+
+export interface ManagerMenuItem {
+  id: string;
+  name: string;
+  price: number;
+  description?: string | null;
+  image?: string | null;
+  category?: string | null;
+}
+export interface ManagerMenu {
+  id: string;
+  name: string;
+  items: ManagerMenuItem[];
+}
+
+export const useManagerMenuQuery = (params: { restaurantId?: string }) =>
+  useQuery<ManagerMenu[]>({
+    queryKey: ['manager-menu', params],
+    queryFn: async () => {
+      const res = await api.get<{ data: ManagerMenu[] }>('/manager/menu', { params });
+      return res.data.data;
+    },
+  });
+
 // Stream the CSV report and trigger a browser download.
 export async function downloadOrdersCsv(params: ReportParams) {
   const res = await api.get('/manager/reports/orders.csv', { params, responseType: 'blob' });

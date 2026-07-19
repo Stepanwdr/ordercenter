@@ -21,7 +21,10 @@ const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
 const CourierDashboard = lazy(() => import('@pages/courier/CourierDashboard'));
 const CourierSettings = lazy(() => import('@pages/courier/CourierSettings'));
 const KdsScreen = lazy(() => import('@pages/kds/KdsScreen'));
+const ManagerLayout = lazy(() => import('@pages/manager/ManagerLayout'));
 const ManagerDashboardPage = lazy(() => import('@pages/manager/ManagerDashboardPage'));
+const ManagerOrdersPage = lazy(() => import('@pages/manager/ManagerOrdersPage'));
+const ManagerMenuPage = lazy(() => import('@pages/manager/ManagerMenuPage'));
 
 const AppShell = styled.div`
   position: relative;
@@ -89,10 +92,14 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       ) : isManager ? (
-        // Restaurant manager sees ONLY their sales & reports cabinet, scoped to owned restaurants.
+        // Restaurant manager cabinet: sidebar + Sales / Orders / Menu, scoped to owned restaurants.
         <Route element={<PrivateRoutes />}>
-          <Route path="/" element={<ManagerDashboardPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route element={<ManagerLayout />}>
+            <Route index element={<ManagerDashboardPage />} />
+            <Route path="orders" element={<ManagerOrdersPage />} />
+            <Route path="menu" element={<ManagerMenuPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
         </Route>
       ) : (
         <Route element={<PrivateRoutes />}>

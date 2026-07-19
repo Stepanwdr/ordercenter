@@ -13,6 +13,8 @@ router.use(authorizeRole('manager', 'admin'));
 router.get('/restaurants', asyncHandler(ReportsController.restaurants));
 router.get('/sales/overview', asyncHandler(ReportsController.salesOverview));
 router.get('/sales/top-items', asyncHandler(ReportsController.topItems));
+router.get('/orders', asyncHandler(ReportsController.orders));
+router.get('/menu', asyncHandler(ReportsController.menu));
 router.get('/reports/orders.csv', asyncHandler(ReportsController.ordersCsv));
 
 export default router;
