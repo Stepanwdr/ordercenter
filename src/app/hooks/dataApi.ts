@@ -4,6 +4,7 @@ import { ordersApi } from '@shared/api/orders';
 import type { Order } from '@shared/types/Order';
 import type { Restaurant } from '@shared/types/Restaurant';
 import type { Courier } from '@shared/types/Courier';
+import type { User, UserRole } from '@shared/types/User';
 import {toast} from "react-toastify";
 
 type RestaurantAddressInput = {
@@ -155,6 +156,38 @@ export const useDeleteRestaurantMutation = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['restaurants'] });
+    },
+  });
+};
+
+// System users (admins / operators / managers) — for the Settings → administrators page.
+export const useUsersQuery = () =>
+  useQuery<{ data: User[] }>({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await api.get<{ data: User[] }>('/users');
+      return res.data;
+    },
+  });
+
+export const useCreateUserMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, unknown, { email: string; password: string; role: UserRole; name?: string; restaurantId?: string }>({
+    mutationKey: ['create-user'],
+    mutationFn: async (payload) => api.post<{ data: User }>('/users', payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+};
+
+export const useUpdateUserPasswordMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<any, unknown, { id: string; password: string }>({
+    mutationKey: ['update-user-password'],
+    mutationFn: async ({ id, password }) => api.put(`/users/${id}/password`, { password }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
 };

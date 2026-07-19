@@ -10,5 +10,6 @@ const router = express.Router();
 router.get('/me', asyncHandler(UsersController.me));
 router.get('/', authorizeRole('admin', 'operator'), asyncHandler(UsersController.list));
 router.post('/', authorizeRole('admin'), validate(schemas.createUser), asyncHandler(UsersController.create));
+router.put('/:id/password', authorizeRole('admin'), validate(schemas.updateUserPassword), asyncHandler(UsersController.updatePassword));
 
 export default router;

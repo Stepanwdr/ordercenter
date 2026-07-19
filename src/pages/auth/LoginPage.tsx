@@ -64,11 +64,11 @@ import { Description, Field, Footer, Form, Header, Hint, PageRoot, Panel, TextLi
           <Button type="submit">Sign in</Button>
         </Form>
 
-        <Footer>
-          <Hint>
-            No account yet? <TextLink to="/register">Create one</TextLink>
-          </Hint>
-        </Footer>
+        {/*<Footer>*/}
+        {/*  <Hint>*/}
+        {/*    No account yet? <TextLink to="/register">Create one</TextLink>*/}
+        {/*  </Hint>*/}
+        {/*</Footer>*/}
       </Panel>
     </PageRoot>
   );

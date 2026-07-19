@@ -17,7 +17,6 @@ const RestaurantsPage = lazy(() => import('@pages/restaurants/RestaurantsPage'))
 const MenuManagementPage = lazy(() => import('@pages/menu-management/MenuManagementPage'));
 const SettingsPage = lazy(() => import('@pages/settings/SettingsPage'));
 const LoginPage = lazy(() => import('@pages/auth/LoginPage'));
-const RegisterPage = lazy(() => import('@pages/auth/RegisterPage'));
 const CourierApp = lazy(() => import('@pages/courier/CourierApp'));
 const CourierDashboard = lazy(() => import('@pages/courier/CourierDashboard'));
 const CourierSettings = lazy(() => import('@pages/courier/CourierSettings'));
@@ -77,7 +76,6 @@ export function App() {
     <Routes>
       <Route element={<PublicRoutes />}>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
       </Route>
 
       <Route path="/courier-app" element={<CourierApp />} />

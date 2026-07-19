@@ -37,6 +37,13 @@ import { useRestaurantsQuery } from '@app/hooks/dataApi';
       return;
     }
 
+    if (role === 'manager' && !restaurantId) {
+      const msg = 'Ընտրեք ռեստորան ղեկավարի համար';
+      toast.error(msg);
+      setError(msg);
+      return;
+    }
+
     // Client-side schema validation
     try {
       registerSchema.parse({ name: name.trim(), email: email.trim(), password: password.trim(), role });
@@ -54,7 +61,7 @@ import { useRestaurantsQuery } from '@app/hooks/dataApi';
         email: email.trim(),
         password: password.trim(),
         role,
-        ...(role === 'courier' && restaurantId ? { restaurantId } : {}),
+        ...((role === 'courier' || role === 'manager') && restaurantId ? { restaurantId } : {}),
       });
 
       localStorage.setItem(
@@ -84,8 +91,18 @@ const rolesOption =[{
   {
     value:'operator',
     label:'Օպեռատոր'
+  },
+  {
+    value:'dispatcher',
+    label:'Դիսպետչեր'
+  },
+  {
+    value:'manager',
+    label:'Ղեկավար'
   }
 ]
+  // Both couriers and managers are tied to a restaurant.
+  const needsRestaurant = role === 'courier' || role === 'manager';
   return (
     <PageRoot>
       <Panel>
@@ -103,6 +120,18 @@ const rolesOption =[{
               triggerDisplay="chip"
             />
           </Field>
+          {needsRestaurant && (
+            <Field>
+              Ռեստորան
+              <Dropdown
+                value={restaurantId}
+                options={restaurantOptions}
+                placeholder="Ընտրել ռեստորան"
+                onChange={(value) => setRestaurantId(value)}
+                triggerDisplay="chip"
+              />
+            </Field>
+          )}
           <Field>
            Անուն Ազգանուն
             <Input
@@ -144,9 +173,9 @@ const rolesOption =[{
 
           {error && <Hint $tone="error">{error}</Hint>}
 
-          <Button type="submit" disabled={registerMutation.isPending}>
-            {registerMutation.isPending ? 'Creating...' : 'Create account'}
-          </Button>
+          {/*<Button type="submit" disabled={registerMutation.isPending}>*/}
+          {/*  {registerMutation.isPending ? 'Creating...' : 'Create account'}*/}
+          {/*</Button>*/}
         </Form>
 
         <Footer>

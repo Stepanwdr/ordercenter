@@ -26,7 +26,6 @@ import { toast } from 'react-toastify';
 import {courierLocationOptions, getStatusLabelOptions} from "@features/select-courier-status/SelectCourierStatus.ts";
 import {formatTime,getDuration} from "@shared/utils/date.ts";
 import { useDebounce } from '@shared/utils/useDebounce.ts';
-import CouriersPage from "@pages/couriers/CouriersPage.tsx";
 import CourierPage from "@pages/couriers/CourierPage.tsx";
 import { OrderRudDrawer } from "./OrderRudDrawer";
 
@@ -311,8 +310,8 @@ const OrdersPage = () => {
       { key: 'courier', name: 'Առաքիչ', resizable: true, draggable: true,
         renderCell: ({ row }: { row: Order }) => {
           return row?.courierProfile?.user?.name ?? <Button style={{minHeight:"25px"}} variant={'primary'} onClick={()=>{
+            // Enter "assign mode": pick the courier from the right-hand list (no drawer).
             setSelectedOrder(row);
-            setOpenCouriersDialog(row.id);
           }}>Նշանակել առաքիչ</Button>;
         },
       },
@@ -559,6 +558,12 @@ const OrdersPage = () => {
 
         <CouriersAside>
           <AsideTitle>Առաքիչներ ({allCouriers.length})</AsideTitle>
+          {selectedOrder && (
+            <AssignBanner>
+              <span>Ընտրեք առաքիչ՝ <b>#{selectedOrder.code}</b></span>
+              <button type="button" onClick={() => setSelectedOrder(null)} title="Չեղարկել">✕</button>
+            </AssignBanner>
+          )}
           <CourierTabs>
             <CourierTab type="button" $active={courierTab === 'free'} onClick={() => setCourierTab('free')}>
               Ազատ <b>{freeCouriers.length}</b>
@@ -578,7 +583,16 @@ const OrdersPage = () => {
             const pct = max > 0 ? Math.min(100, Math.round((active / max) * 100)) : 0;
             const color = STATUS_COLOR[courier.status] ?? '#64748b';
             return (
-              <CourierCard key={cid} type="button" onClick={() => setCourierDetailsId(String(cid))}>
+              <CourierCard
+                key={cid}
+                type="button"
+                $assign={!!selectedOrder}
+                onClick={() =>
+                  selectedOrder
+                    ? handleCourierAsignToOrder(String(cid)) // assign mode → assign to the picked order
+                    : setCourierDetailsId(String(cid))       // normal → open courier details
+                }
+              >
                 <CourierTop>
                   <CourierName>{courier.user?.name || courier.user?.email || 'Առաքիչ'}</CourierName>
                   <StatusChip $color={color}>{getStatusLabelOptions[courier.status] ?? courier.status}</StatusChip>
@@ -607,9 +621,6 @@ const OrdersPage = () => {
 
       <Drawer open={isCreateOpen} position="bottom" title={editOrder ? `Փոխել պատվերը #${editOrder.code}` : 'Ստեղծել նոր պատվեր'} onClose={() => { setCreateOpen(false); setEditOrder(null); }}>
         <CreateOrderFlow key={editOrder?.id ?? 'new'} order={editOrder} onClose={()=>{ setCreateOpen(false); setEditOrder(null); }}/>
-      </Drawer>
-      <Drawer open={Boolean(selectedOrder)} position="bottom" title="Առաքիչների ցանկ" onClose={() => setSelectedOrder(null)}>
-        <CouriersPage selectedOrder={selectedOrder} handleCourierAsignToOrder={handleCourierAsignToOrder} />
       </Drawer>
       <Drawer openWidth={'600px'} open={Boolean(courierDetailsId)} position="right" title="Առաքիչ" onClose={() => setCourierDetailsId(null)}>
         {courierDetailsId && <CourierPage id={courierDetailsId} onClose={() => setCourierDetailsId(null)} />}
@@ -795,19 +806,35 @@ const CourierTab = styled.button<{ $active?: boolean }>`
     b { opacity: 0.85; }
 `;
 
-const CourierCard = styled.button`
+const CourierCard = styled.button<{ $assign?: boolean }>`
     display: grid;
     gap: 8px;
     text-align: left;
     width: 100%;
     padding: 12px 14px;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid ${({ $assign }) => ($assign ? 'rgba(52,211,153,0.5)' : 'rgba(255, 255, 255, 0.08)')};
+    background: ${({ $assign }) => ($assign ? 'rgba(52,211,153,0.08)' : 'rgba(255, 255, 255, 0.04)')};
     color: #fff;
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s;
-    &:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.16); }
+    &:hover { background: ${({ $assign }) => ($assign ? 'rgba(52,211,153,0.16)' : 'rgba(255, 255, 255, 0.07)')}; border-color: ${({ $assign }) => ($assign ? 'rgba(52,211,153,0.8)' : 'rgba(255, 255, 255, 0.16)')}; }
+`;
+
+const AssignBanner = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(52, 211, 153, 0.14);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    color: #34d399;
+    font-size: 0.85rem;
+    b { color: #fff; }
+    button { border: none; background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 15px; }
 `;
 
 const CourierTop = styled.div`

@@ -205,6 +205,12 @@ export const schemas = {
     email: z.string().email(),
     password: z.string().min(8).max(72),
     role: roleSchema,
+    name: z.string().min(1).max(255).optional(),
+    // Required when role = 'manager' — links the manager to a restaurant (ownerId).
+    restaurantId: z.string().uuid().optional(),
+  }),
+  updateUserPassword: z.object({
+    password: z.string().min(8).max(72),
   }),
   createMenu: z.object({
     name: z.string().min(2).max(255),

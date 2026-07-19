@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { RefreshToken, User, Courier, sequelize } from '../models/index.js';
+import { RefreshToken, User, Courier, Restaurant, sequelize } from '../models/index.js';
 import AppError from '../utils/AppError.js';
 import { comparePassword, hashPassword } from '../utils/password.js';
 import { generateRefreshToken, getRefreshTokenExpiryDate, signAccessToken } from '../utils/tokens.js';
@@ -56,6 +56,17 @@ class AuthService {
           },
           { transaction }
         );
+      }
+
+      // A manager is scoped to a restaurant via Restaurant.ownerId — require & link it.
+      if (user.role === 'manager') {
+        if (!payload.restaurantId) {
+          throw new AppError(400, 'Выберите ресторан для руководителя');
+        }
+        const restaurant = await Restaurant.findByPk(payload.restaurantId, { transaction });
+        if (!restaurant) throw new AppError(404, 'Restaurant not found');
+        restaurant.ownerId = user.id;
+        await restaurant.save({ transaction });
       }
 
       const cleanUser = await User.findByPk(user.id, { transaction });

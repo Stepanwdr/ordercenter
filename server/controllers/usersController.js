@@ -24,6 +24,11 @@ class UsersController {
       data: user,
     });
   };
+
+  static updatePassword = async (req, res) => {
+    await UserService.setPassword(req.params.id, req.validated.password);
+    res.json({ success: true });
+  };
 }
 
 export default UsersController;
